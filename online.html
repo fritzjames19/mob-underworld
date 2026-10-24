@@ -354,6 +354,9 @@ table.rank { width: 100%; border-collapse: collapse; min-width: 640px; }
 .field label { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .field input { width: 100%; padding: 11px 12px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
 .field input:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+.inp { width: 100%; padding: 11px 12px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 3px; font: inherit; resize: vertical; }
+.inp:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+.ask { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
 .field .err { color: #e09aa0; font-size: 13px; min-height: 1.2em; }
 .portrait-pick { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
 .portrait-pick button { padding: 3px; border: 2px solid var(--line); background: var(--bg); border-radius: 3px; }
@@ -2400,6 +2403,7 @@ const ART = (function () {
     { id: 'inventory', label: 'Inventory', icon: 'pack' },
     { id: 'shop', label: 'Equipment Shop', icon: 'bag' },
     { id: 'businesses', label: 'Businesses', icon: 'dollar' },
+    { id: 'crew', label: 'Crew', icon: 'shield' },
     { id: 'rankings', label: 'Rankings', icon: 'trophy' },
     { id: 'profile', label: 'Profile', icon: 'user' },
     { id: 'settings', label: 'Settings', icon: 'sliders', hidden: true },
@@ -3151,7 +3155,7 @@ const ART = (function () {
   }
 
   /* ---------- render ---------- */
-  const PAGES = { dashboard: pageDashboard, jobs: pageJobs, city: pageCity, inventory: pageInventory, shop: pageShop, businesses: pageBusinesses, rankings: pageRankings, profile: pageProfile, settings: pageSettings };
+  const PAGES = { dashboard: pageDashboard, jobs: pageJobs, city: pageCity, inventory: pageInventory, shop: pageShop, businesses: pageBusinesses, crew: pageCrew, rankings: pageRankings, profile: pageProfile, settings: pageSettings };
   function render() {
     renderSidebar(); renderTopbar(); renderTabbar();
     const view = $('#view');
@@ -3162,7 +3166,7 @@ const ART = (function () {
     applyPaging();
     renderModal();
     animateBars();
-    const names = { dashboard: 'Dashboard', jobs: 'Job Board', city: 'City', inventory: 'Inventory', shop: 'Equipment Shop', businesses: 'Businesses', rankings: 'Rankings', profile: 'Profile', settings: 'Settings' };
+    const names = { dashboard: 'Dashboard', jobs: 'Job Board', city: 'City', inventory: 'Inventory', shop: 'Equipment Shop', businesses: 'Businesses', crew: 'Crew', rankings: 'Rankings', profile: 'Profile', settings: 'Settings' };
     document.title = names[ui.route] + ' · MOB: The Underworld';
   }
 
@@ -3715,6 +3719,131 @@ const ART = (function () {
   }
   setInterval(cloudRefresh, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) cloudRefresh(); });
+
+  /* ---------- crews (online only) ---------- */
+  const crewUi = { data: null, browse: null, loading: false, err: '', ask: null, loadedFor: null };
+  const ROLE_NAME = { member: 'Member', recruiter: 'Recruiter', officer: 'Officer', leader: 'Leader' };
+  const ROLE_ORD = { member: 1, recruiter: 2, officer: 3, leader: 4 };
+  async function loadCrew(quiet) {
+    if (!cloud.on) return;
+    if (!quiet) { crewUi.loading = true; render(); }
+    try {
+      const st = await rpc('game_crew_state');
+      crewUi.data = st.ok ? st : null; crewUi.err = st.ok ? '' : (st.error || 'Could not load your crew.');
+      crewUi.browse = (st.ok && !st.crew) ? (await rpc('game_crew_browse')).crews || [] : null;
+      crewUi.loadedFor = cloud.session && cloud.session.email;
+    } catch (e) {
+      if (e.signedOut) { showAuth(friendly(e)); return; }
+      crewUi.err = (e.status === 404 || /could not find|function/i.test(e.message || '')) ? 'Crews need the latest database update (migration 0007). Ask whoever runs the game to install it.' : friendly(e);
+    } finally { crewUi.loading = false; if (ui.route === 'crew') render(); }
+  }
+  async function crewCall(fn, args, okMsg) {
+    if (cloud.busy) return false;
+    cloud.busy = true; document.body.classList.add('busy');
+    let ok = false;
+    try {
+      const r = await rpc(fn, Object.assign({ p_key: newKey() }, args));
+      if (!r || !r.ok) toast((r && r.error) || 'That did not work.', 'error');
+      else { ok = true; toast(okMsg, 'success'); }
+      crewUi.ask = null;
+      try { const next = await pullState(); if (next) { S = next; saveExtras(); } } catch (e) { /* the crew view still refreshes */ }
+      await loadCrew(true);
+    } catch (e) { if (e.signedOut) showAuth(friendly(e)); else toast(friendly(e), 'error'); }
+    finally { cloud.busy = false; document.body.classList.remove('busy'); render(); }
+    return ok;
+  }
+  const dollarsToMinor = (v) => { const n = Math.round(parseFloat(String(v).replace(/[$,\s]/g, '')) * 100); return Number.isFinite(n) && n > 0 ? n : 0; };
+  const valOf = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
+  const askRow = (act, id, label, extra) => (crewUi.ask && crewUi.ask.act === act && crewUi.ask.id === (id || '')
+    ? '<span class="ask">Sure? <button class="btn sm danger" data-act="crew-' + act + '-yes" data-id="' + esc(id || '') + '"' + (extra || '') + '>Yes</button> <button class="btn sm ghost" data-act="crew-ask-no">No</button></span>'
+    : '<button class="btn sm ghost" data-act="crew-ask" data-ask="' + act + '" data-id="' + esc(id || '') + '"' + (extra || '') + '>' + label + '</button>');
+
+  function crewCard(inner) { return '<section class="card" data-pg="item" style="padding:16px;display:grid;gap:10px;align-content:start">' + inner + '</section>'; }
+  function crewNone(d) {
+    const cfg = d.config, myRank = MOB.rankForXp(S.player.xp).name;
+    const inv = (d.invitations || []).map((r) => crewCard('<b>' + esc(r.crew_name) + '</b><span style="color:var(--muted)">Invited by ' + esc(r.from) + '</span><div style="display:flex;gap:8px"><button class="btn sm" data-act="crew-respond" data-id="' + r.id + '" data-yes="1">Accept</button><button class="btn sm ghost" data-act="crew-respond" data-id="' + r.id + '" data-yes="0">Decline</button></div>')).join('');
+    const apps = new Set((d.applications || []).map((a) => a.crew_id));
+    const mine = (d.applications || []).map((r) => crewCard('<b>' + esc(r.crew_name) + '</b><span style="color:var(--muted)">Your application is waiting.</span><div><button class="btn sm ghost" data-act="crew-cancel" data-id="' + r.id + '">Withdraw</button></div>')).join('');
+    const list = (crewUi.browse || []).map((c) => crewCard('<div style="display:flex;justify-content:space-between;gap:8px"><b>' + esc(c.name) + '</b><span class="chip">' + c.members + ' / ' + c.capacity + '</span></div>' +
+      (c.description ? '<p style="color:var(--muted);font-size:13.5px">' + esc(c.description) + '</p>' : '') + '<span style="color:var(--muted);font-size:13px">Led by ' + esc(c.leader) + '</span>' +
+      '<div>' + (apps.has(c.id) ? '<button class="btn sm ghost" disabled>Applied</button>' : c.full ? '<button class="btn sm ghost" disabled>Full</button>' : '<button class="btn sm" data-act="crew-apply" data-id="' + c.id + '">Apply</button>') + '</div>')).join('');
+    const sub = curSub('crew', inv ? 'invites' : 'browse');
+    const tabs = isPhone() ? subTabs('crew', [['browse', 'Crews'], ['invites', 'Invites' + ((d.invitations || []).length ? ' ' + d.invitations.length : '')], ['found', 'Found']]) : '';
+    const form = crewCard('<h3 style="font-size:20px">Found a crew</h3><p style="color:var(--muted);font-size:13.5px">Costs ' + money(Number(cfg.fee_minor)) + '. Needs the rank of ' + esc(cfg.min_rank_name) + ' (you are ' + esc(myRank) + '). Up to ' + cfg.capacity + ' members. The name cannot be changed later.</p>' +
+      '<input id="crew-name" class="inp" maxlength="24" placeholder="Crew name (3 to 24 characters)" autocomplete="off">' +
+      '<textarea id="crew-desc" class="inp" maxlength="300" rows="2" placeholder="What is the crew about? (optional)"></textarea>' +
+      '<div><button class="btn" data-act="crew-create">Found the crew</button></div>');
+    const invs = inv + mine || '<p style="color:var(--muted)">No invitations or applications right now.</p>';
+    if (isPhone()) return tabs + (sub === 'invites' ? invs : sub === 'found' ? form : (list || '<div class="empty"><h3>No crews yet</h3><p>Be the first to found one.</p></div>'));
+    return (inv || mine ? '<h2 class="sec-title">Your invitations and applications</h2><div class="grid g3">' + inv + mine + '</div>' : '') + '<h2 class="sec-title">Crews you can join</h2>' +
+      (list ? '<div class="grid g3">' + list + '</div>' : '<p style="color:var(--muted)">No crews yet. Be the first to found one.</p>') + '<h2 class="sec-title">Start your own</h2><div class="grid g2">' + form + '</div>';
+  }
+  function crewIn(d) {
+    const c = d.crew, me = d.me, cfg = d.config, myOrd = ROLE_ORD[me.role];
+    const mem = d.members.map((m) => {
+      const isMe = m.id === me.id, lower = ROLE_ORD[m.role] < myOrd;
+      let acts = '';
+      if (!isMe && me.is_leader) {
+        acts += ['member', 'recruiter', 'officer'].filter((r) => r !== m.role).map((r) => '<button class="btn sm ghost" data-act="crew-role" data-id="' + m.id + '" data-role="' + r + '">Make ' + ROLE_NAME[r] + '</button>').join('') + askRow('transfer', m.id, 'Hand over lead');
+      }
+      if (!isMe && me.can_kick && lower) acts += askRow('kick', m.id, 'Remove');
+      return '<article data-pg="item" class="card" style="padding:12px;display:grid;gap:8px"><div class="pl" style="display:flex;gap:10px;align-items:center">' + portrait(m.portrait, 40) + '<div style="min-width:0"><b>' + esc(m.name) + (isMe ? ' (you)' : '') + '</b><div style="color:var(--muted);font-size:13px">' + esc(m.rank) + '</div></div><span class="chip' + (m.role === 'leader' ? ' gold' : '') + '" style="margin-left:auto">' + ROLE_NAME[m.role] + '</span></div>' + (acts ? '<div style="display:flex;gap:6px;flex-wrap:wrap">' + acts + '</div>' : '') + '</article>';
+    }).join('');
+    const reqs = (d.requests || []).map((r) => crewCard('<b>' + esc(r.name) + '</b><span style="color:var(--muted)">' + (r.kind === 'application' ? 'Wants to join' : 'Invited by ' + esc(r.by)) + '</span><div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      (r.kind === 'application' ? '<button class="btn sm" data-act="crew-respond" data-id="' + r.id + '" data-yes="1">Accept</button><button class="btn sm ghost" data-act="crew-respond" data-id="' + r.id + '" data-yes="0">Decline</button>' : '') +
+      '<button class="btn sm ghost" data-act="crew-cancel" data-id="' + r.id + '">' + (r.kind === 'application' ? 'Dismiss' : 'Cancel invite') + '</button></div>')).join('');
+    const invite = me.can_recruit ? crewCard('<h3 style="font-size:18px">Invite a player</h3><input id="crew-invite-name" class="inp" maxlength="30" placeholder="Exact character name" autocomplete="off"><div><button class="btn sm" data-act="crew-invite">Send invitation</button></div>') : '';
+    const led = d.ledger.map((l) => '<tr data-pg="item"><td style="width:90px;color:var(--muted)">' + ago(l.at) + '</td><td>' + esc(l.type) + (l.by ? ' · ' + esc(l.by) : '') + '</td><td style="text-align:right;color:' + (l.amount_minor < 0 ? 'var(--bad)' : 'var(--gold)') + '">' + (l.amount_minor < 0 ? '−' : '+') + money(Math.abs(Number(l.amount_minor))) + '</td></tr>').join('');
+    const treasury = crewCard('<div class="kv" style="grid-template-columns:1fr"><div><small>Crew treasury</small><b class="gold num">' + money(Number(c.treasury_minor)) + '</b></div></div>' +
+      '<input id="crew-amt" class="inp" inputmode="decimal" placeholder="Amount in dollars" autocomplete="off"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-act="crew-deposit">Deposit</button>' + (me.can_withdraw ? '<button class="btn sm ghost" data-act="crew-withdraw">Withdraw</button>' : '') + '</div>' +
+      '<p style="color:var(--muted);font-size:12.5px">Anyone in the crew can deposit. Only the leader can withdraw.</p>') +
+      (led ? '<div class="table-wrap"><table class="rank" style="min-width:0"><tbody>' + led + '</tbody></table></div>' : '<p style="color:var(--muted)">No treasury activity yet.</p>');
+    const feed = d.activity.length ? d.activity.map((a) => '<div data-pg="item" class="card" style="padding:10px 12px"><span style="color:var(--muted);font-size:12.5px">' + ago(a.at) + '</span><div>' + esc(a.text) + '</div></div>').join('') : '<p style="color:var(--muted)">Nothing has happened yet.</p>';
+    const about = crewCard('<h3 style="font-size:20px">' + esc(c.name) + '</h3><p style="color:var(--muted)">' + (c.description ? esc(c.description) : 'No description yet.') + '</p><span class="chip">' + d.members.length + ' / ' + c.capacity + ' members</span>' +
+      (me.can_recruit ? '<textarea id="crew-desc-edit" class="inp" maxlength="300" rows="2" placeholder="New description">' + esc(c.description || '') + '</textarea><div><button class="btn sm ghost" data-act="crew-update">Save description</button></div>' : '') +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' + (me.is_leader ? askRow('disband', '', 'Disband crew') : askRow('leave', '', 'Leave crew')) + '</div>' +
+      (me.is_leader ? '<p style="color:var(--muted);font-size:12.5px">Leaders must hand over the crew (or empty the treasury and disband) before leaving.</p>' : ''));
+    const nReq = (d.requests || []).length;
+    const tabs = [['members', 'Members'], ['requests', 'Requests' + (nReq ? ' ' + nReq : '')], ['treasury', 'Treasury'], ['feed', 'Feed'], ['about', 'About']];
+    const sub = curSub('crew', 'members');
+    const sections = { members: mem, requests: (me.can_recruit ? invite + (reqs || '<p style="color:var(--muted)">No requests waiting.</p>') : '<p style="color:var(--muted)">Only recruiters and officers see requests.</p>'), treasury, feed, about };
+    if (isPhone()) return subTabs('crew', tabs) + sections[sub];
+    const T = { members: 'Members', requests: 'Requests', treasury: 'Treasury', feed: 'Feed', about: 'About the crew' };
+    return ['members', 'requests', 'treasury', 'feed', 'about'].map((k) => '<h2 class="sec-title">' + T[k] + '</h2>' + (k === 'members' ? '<div class="grid g3">' + sections[k] + '</div>' : k === 'requests' ? '<div class="grid g3">' + sections[k] + '</div>' : sections[k])).join('');
+  }
+  function pageCrew() {
+    if (!cloud.on) {
+      return head('The Outfit', 'Crew', 'Crews are shared with other real players.') + '<section class="card" style="padding:20px;display:grid;gap:10px"><h3 style="font-size:22px">Sign in to use crews</h3><p style="color:var(--muted)">Crews live on the server so every member sees the same crew. Switch to your online account to found or join one.</p>' +
+        (CLOUD_ENABLED ? '<div><button class="btn" data-act="go-online">Go online</button></div>' : '<p style="color:var(--muted)">This offline copy has no online mode.</p>') + '</section>';
+    }
+    if (crewUi.loadedFor !== (cloud.session && cloud.session.email) && !crewUi.loading) setTimeout(() => loadCrew(), 0);
+    const h = head('The Outfit', crewUi.data && crewUi.data.crew ? crewUi.data.crew.name : 'Crew', 'A crew is a few players working together with a shared purse.');
+    if (crewUi.err) return h + '<section class="card" style="padding:18px"><p>' + esc(crewUi.err) + '</p><button class="btn sm" data-act="crew-reload">Try again</button></section>';
+    if (!crewUi.data) return h + '<p style="color:var(--muted)">Loading your crew…</p>';
+    return h + (crewUi.data.crew ? crewIn(crewUi.data) : crewNone(crewUi.data));
+  }
+  document.addEventListener('click', async (e) => {
+    const t = e.target.closest('[data-act^="crew-"]'); if (!t) return;
+    const a = t.dataset.act, id = t.dataset.id;
+    if (a === 'crew-reload') { crewUi.err = ''; loadCrew(); }
+    else if (a === 'crew-ask') { crewUi.ask = { act: t.dataset.ask, id: id || '' }; render(); }
+    else if (a === 'crew-ask-no') { crewUi.ask = null; render(); }
+    else if (a === 'crew-create') crewCall('game_crew_create', { p_name: valOf('crew-name'), p_description: valOf('crew-desc') }, 'Crew founded.');
+    else if (a === 'crew-apply') crewCall('game_crew_apply', { p_crew_id: id }, 'Application sent.');
+    else if (a === 'crew-invite') { const n = valOf('crew-invite-name').trim(); if (!n) { toast('Type the exact name of the player.', 'error'); return; } crewCall('game_crew_invite', { p_player_name: n }, 'Invitation sent.'); }
+    else if (a === 'crew-respond') crewCall('game_crew_respond', { p_request_id: Number(id), p_accept: t.dataset.yes === '1' }, t.dataset.yes === '1' ? 'Accepted.' : 'Declined.');
+    else if (a === 'crew-cancel') crewCall('game_crew_cancel_request', { p_request_id: Number(id) }, 'Done.');
+    else if (a === 'crew-role') crewCall('game_crew_set_role', { p_player_id: id, p_role: t.dataset.role }, 'Role changed.');
+    else if (a === 'crew-kick-yes') crewCall('game_crew_kick', { p_player_id: id }, 'Member removed.');
+    else if (a === 'crew-transfer-yes') crewCall('game_crew_transfer', { p_player_id: id }, 'You handed over the crew.');
+    else if (a === 'crew-leave-yes') crewCall('game_crew_leave', {}, 'You left the crew.');
+    else if (a === 'crew-disband-yes') crewCall('game_crew_disband', {}, 'Crew disbanded.');
+    else if (a === 'crew-update') crewCall('game_crew_update', { p_description: valOf('crew-desc-edit') }, 'Description saved.');
+    else if (a === 'crew-deposit' || a === 'crew-withdraw') {
+      const m = dollarsToMinor(valOf('crew-amt')); if (!m) { toast('Enter an amount in dollars.', 'error'); return; }
+      crewCall(a === 'crew-deposit' ? 'game_crew_deposit' : 'game_crew_withdraw', { p_amount_minor: m }, a === 'crew-deposit' ? 'Deposited.' : 'Withdrawn.');
+    }
+  });
 
   /* ---------- boot ---------- */
   render();
