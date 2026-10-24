@@ -1,3 +1,4 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}</style></head><body>
 <title>MOB: The Underworld</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0e0d0d">
@@ -485,6 +486,10 @@ button, [data-act], .btn { -webkit-tap-highlight-color: transparent; touch-actio
   .rain { display: none; }
 }
 
+body.busy, body.busy * { cursor: progress; }
+.auth { z-index: 90; }
+.auth .modal-body { gap: 12px; }
+.auth .field { margin-bottom: 10px; }
 /* ---------- phone: one screen per page (<=700px) ---------- */
 .pager, .subtabs { display: none; }
 @media (max-width: 700px) {
@@ -2050,7 +2055,7 @@ const MOB = (function () {
     createInitialState, effective, maxHealth, netWorthMinor, slotsUsed, activeMissionId,
     missionStatus, computeChance, startMission, resolveMission, claimMission,
     buyItem, equipItem, unequipSlot, useItem, spendAttributePoint, earnedAttrPoints, patchUp, changeDistrict, validateName, updateProfile, regen, leaderboard,
-    loadState, saveState, clearSave, sanitize,
+    loadState, saveState, clearSave, sanitize, checkAchievements, pushActivity, pushLedger, ACHIEVEMENTS,
   };
 })();
 if (typeof module !== 'undefined') module.exports = MOB;
@@ -2409,7 +2414,7 @@ const ART = (function () {
   };
   try { const h = location.hash.slice(1); if (ROUTE_IDS.includes(h)) ui.route = h; } catch (e) { /* ignore */ }
 
-  function save() { MOB.saveState(store, S); }
+  function save() { if (cloud.on) { saveExtras(); return; } MOB.saveState(store, S); }
   function commit(next) { S = next; save(); render(); }
 
   /* ---------- helpers ---------- */
@@ -2849,6 +2854,9 @@ const ART = (function () {
 
   function settingsParts() {
     return {
+      account: !CLOUD_ENABLED ? '' : cloud.on
+        ? '<section class="card" style="padding:20px;display:grid;gap:12px;align-content:start"><h3 style="font-size:24px">Your account</h3><p style="color:var(--muted)">Signed in as <b>' + esc((cloud.session && cloud.session.email) || '') + '</b>. Your progress is stored on the server.</p><div><button class="btn ghost" data-act="sign-out">Sign out</button></div></section>'
+        : '<section class="card" style="padding:20px;display:grid;gap:12px;align-content:start"><h3 style="font-size:24px">Play online</h3><p style="color:var(--muted)">You are in the offline demo. Sign in to keep your progress on the server and play from any device. The offline demo save stays here.</p><div><button class="btn" data-act="go-online">Sign in</button></div></section>',
       reset: '<section class="card" style="padding:20px;display:grid;gap:12px;align-content:start"><h3 style="font-size:24px">Reset demo</h3>' +
         '<p style="color:var(--muted)">Wipe your progress and start again as Tommy Malone: Newcomer, ' + money(MOB.CONFIG.startCashMinor) + ', full health and energy, no heat and no firearm. This cannot be undone.</p>' +
         '<div><button class="btn danger" data-act="reset-ask">' + icon('refresh', 16) + 'Reset Demo</button></div></section>',
@@ -2862,7 +2870,7 @@ const ART = (function () {
     if (isPhone()) return phoneSettings();
     const p = settingsParts();
     return head('Housekeeping', 'Settings', 'Everything in this prototype is stored in your browser only.') +
-      '<div class="grid g2">' + p.reset + p.about + '</div>' + playtestNotes(false) + reportCard();
+      '<div class="grid g2">' + (cloud.on ? p.account : p.account + p.reset) + p.about + '</div>' + playtestNotes(false) + reportCard();
   }
 
   /* ---------- phone: one screen per page ----------
@@ -3001,8 +3009,8 @@ const ART = (function () {
 
   function phoneSettings() {
     const p = settingsParts(), sub = curSub('settings', 'about');
-    const body = sub === 'about' ? p.about : sub === 'notes' ? playtestNotes(false) : sub === 'report' ? reportCard() : p.reset;
-    return head('', 'Settings', '', '') + subTabs('settings', [['about', 'About'], ['notes', 'Notes'], ['report', 'Report'], ['reset', 'Reset']]) + body;
+    const body = sub === 'about' ? p.about : sub === 'notes' ? playtestNotes(false) : sub === 'report' ? reportCard() : (cloud.on ? p.account : p.account + p.reset);
+    return head('', 'Settings', '', '') + subTabs('settings', [['about', 'About'], ['notes', 'Notes'], ['report', 'Report'], ['reset', cloud.on ? 'Account' : (CLOUD_ENABLED ? 'Account' : 'Reset')]]) + body;
   }
 
   /* ---------- modals ---------- */
@@ -3193,10 +3201,16 @@ const ART = (function () {
      Each click makes a fresh key. The result is reshaped so the existing handlers keep working. */
   let keySeq = 0;
   const newKey = () => 'ui-' + Date.now().toString(36) + '-' + (++keySeq) + '-' + Math.random().toString(36).slice(2, 8);
-  function ACT(action, params, rng) {
+  function localAct(action, params, rng) {
+    if (action === 'patchUp' || action === 'updateProfile') {
+      const r = action === 'patchUp' ? MOB.patchUp(S, Date.now()) : MOB.updateProfile(S, params.name, params.portrait, Date.now());
+      return r.ok ? { ok: true, state: r.state, message: r.message } : { ok: false, error: r.error };
+    }
     const r = MOB.applyAction(S, { action, idempotencyKey: newKey(), params }, rng || Math.random, Date.now());
     return r.ok ? { ok: true, state: r.state, message: r.message, result: r.detail, achievements: r.achievements } : { ok: false, error: r.error };
   }
+  /* offline: answers at once. online: sends the move to the server first. Callers always `await` it. */
+  function ACT(action, params, rng) { return cloud.on ? cloudAct(action, params) : localAct(action, params, rng); }
   function doResult(res, okMsg) {
     if (!res.ok) { toast(res.error, 'error'); return false; }
     commit(res.state);
@@ -3205,9 +3219,9 @@ const ART = (function () {
     return true;
   }
 
-  function chooseApproach(choiceId) {
+  async function chooseApproach(choiceId) {
     if (ui.resolving || !ui.modal || ui.modal.type !== 'mission') return;
-    const res = ACT('resolveMission', { missionId: ui.modal.id, choiceId });
+    const res = await ACT('resolveMission', { missionId: ui.modal.id, choiceId });
     if (!res.ok) { toast(res.error, 'error'); return; }
     ui.resolving = true; ui.modal.phase = 'working'; renderModal();
     setTimeout(() => {
@@ -3217,7 +3231,7 @@ const ART = (function () {
     }, 900);
   }
 
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', async (e) => {
     const inPop = e.target.closest('.pop-wrap');
     if (!inPop && ui.pop) { ui.pop = null; renderTopbar(); }
     const t = e.target.closest('[data-act]');
@@ -3235,17 +3249,17 @@ const ART = (function () {
       case 'shop-filter': ui.shopFilter = t.dataset.f; render(); break;
       case 'sort': ui.sort = t.dataset.k; render(); break;
       case 'open-mission': ui.modal = { type: 'mission', id, phase: '', claimed: null }; render(); break;
-      case 'start': doResult(ACT('startMission', { missionId: id })); break;
+      case 'start': doResult(await ACT('startMission', { missionId: id })); break;
       case 'choose': chooseApproach(t.dataset.choice); break;
       case 'fight-start': {
-        const res = ACT('startEncounter', { encounterId: id });
+        const res = await ACT('startEncounter', { encounterId: id });
         if (!res.ok) { toast(res.error, 'error'); break; }
         ui.modal = { type: 'fight', result: null }; commit(res.state); toast(res.message, 'success'); break;
       }
       case 'open-fight': ui.modal = { type: 'fight', result: null }; renderModal(); break;
       case 'fight-act': {
         const params = { action: t.dataset.do }; if (t.dataset.item) params.itemId = t.dataset.item;
-        const res = ACT('combatAction', params);
+        const res = await ACT('combatAction', params);
         if (!res.ok) { toast(res.error, 'error'); break; }
         const ended = res.result && res.result.ended;
         if (ended) { ui.modal = { type: 'fight', result: ended }; }
@@ -3254,7 +3268,7 @@ const ART = (function () {
         break;
       }
       case 'claim': {
-        const res = ACT('claimMission', { missionId: id });
+        const res = await ACT('claimMission', { missionId: id });
         if (!res.ok) { toast(res.error, 'error'); break; }
         const r = res.result;
         commit(res.state);
@@ -3277,25 +3291,25 @@ const ART = (function () {
       case 'subtab': ui.sub[t.dataset.page] = t.dataset.id; render(); break;
       case 'pg-prev': pgStep(-1); break;
       case 'pg-next': pgStep(1); break;
-      case 'claim-daily': doResult(ACT('claimDaily', {})); break;
+      case 'claim-daily': doResult(await ACT('claimDaily', {})); break;
       case 'dismiss-notes': try { store.setItem('mob_playtest_notes_seen', '1'); } catch (e) { /* storage blocked: it will show again next visit */ } render(); break;
       case 'close-modal': closeModal(); break;
       case 'backdrop': if (e.target === t) closeModal(); break;
       case 'levelup-close': if (e.target === t || t.tagName === 'BUTTON') $('#levelup-root').innerHTML = ''; break;
       case 'buy': {
-        const res = ACT('buyItem', { itemId: id });
+        const res = await ACT('buyItem', { itemId: id });
         if (!res.ok) { toast(res.error, 'error'); t.classList.remove('shake'); void t.offsetWidth; t.classList.add('shake'); }
         else doResult(res);
         break;
       }
-      case 'buy-biz': doResult(ACT('buyBusiness', { businessId: id })); break;
-      case 'upgrade-biz': doResult(ACT('upgradeBusiness', { businessId: id })); break;
-      case 'collect': doResult(ACT('collectBusiness', { businessId: id })); break;
-      case 'repair': doResult(ACT('repairWeapon', { itemId: id })); break;
-      case 'equip': doResult(ACT('equipItem', { itemId: id })); break;
-      case 'unequip': doResult(ACT('unequipItem', { slot: t.dataset.slot })); break;
-      case 'spend-attr': doResult(ACT('spendAttribute', { attr: t.dataset.attr })); break;
-      case 'use-item': doResult(ACT('useItem', { itemId: id })); break;
+      case 'buy-biz': doResult(await ACT('buyBusiness', { businessId: id })); break;
+      case 'upgrade-biz': doResult(await ACT('upgradeBusiness', { businessId: id })); break;
+      case 'collect': doResult(await ACT('collectBusiness', { businessId: id })); break;
+      case 'repair': doResult(await ACT('repairWeapon', { itemId: id })); break;
+      case 'equip': doResult(await ACT('equipItem', { itemId: id })); break;
+      case 'unequip': doResult(await ACT('unequipItem', { slot: t.dataset.slot })); break;
+      case 'spend-attr': doResult(await ACT('spendAttribute', { attr: t.dataset.attr })); break;
+      case 'use-item': doResult(await ACT('useItem', { itemId: id })); break;
       case 'goto-shop': {
         const it = MOB.ITEM_BY_ID[id];
         if (!it.shop) { toast('The ' + it.name + ' is not sold anywhere.', 'error'); break; }
@@ -3303,8 +3317,8 @@ const ART = (function () {
         const el = document.getElementById('shop-' + id); if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('shake'); }
         break;
       }
-      case 'visit': doResult(ACT('travel', { districtId: id })); break;
-      case 'patch-up': doResult(MOB.patchUp(S, Date.now())); break;
+      case 'visit': doResult(await ACT('travel', { districtId: id })); break;
+      case 'patch-up': doResult(await ACT('patchUp', {})); break;
       case 'edit-profile': ui.modal = { type: 'profile', draft: { name: S.player.name, portrait: S.player.portrait } }; renderModal(); break;
       case 'pick-portrait':
         ui.modal.draft.portrait = Number(t.dataset.i);
@@ -3323,11 +3337,11 @@ const ART = (function () {
     }
   });
 
-  document.addEventListener('submit', (e) => {
+  document.addEventListener('submit', async (e) => {
     if (e.target.id !== 'profile-form') return;
     e.preventDefault();
     const input = $('#pf-name'), err = $('#pf-err');
-    const res = MOB.updateProfile(S, input.value, ui.modal.draft.portrait, Date.now());
+    const res = await ACT('updateProfile', { name: input.value, portrait: ui.modal.draft.portrait });
     if (!res.ok) { err.textContent = res.error; input.setAttribute('aria-invalid', 'true'); input.focus(); return; }
     ui.modal = null; commit(res.state); toast('Profile saved.', 'success');
   });
@@ -3374,9 +3388,339 @@ const ART = (function () {
     if (t && t.tagName === 'IMG' && t.dataset && t.dataset.fb) t.outerHTML = ART.fallbackFor(t.dataset.fb);
   }, true);
 
+  const CLOUD_ENABLED = true;
+  /* ---------- cloud mode: accounts and server-side rules (Supabase) ----------
+     The page talks to the database with plain fetch calls. The database owns cash, energy, items, rewards and cooldowns;
+     this file only sends requests and rebuilds the local view from what the server says. Offline demo mode is untouched. */
+  const CLOUD_URL = 'https://wafihqqnixmwebswkvcq.supabase.co', CLOUD_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndhZmlocXFuaXhtd2Vic3drdmNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4MTcwMTAsImV4cCI6MjEwODM5MzAxMH0.lKGINYch6Hk905d8AaSqs990jjJexb0b2fDiFk08U2U';
+  const cloud = { on: false, session: null, busy: false, extras: null, skew: 0 };
+  const K_SESSION = 'mob_cloud_session', K_MODE = 'mob_mode', K_EXTRA = 'mob_cloud_extras_';
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const readJson = (k) => { try { return JSON.parse(store.getItem(k) || 'null'); } catch (e) { return null; } };
+  const writeJson = (k, v) => { try { store.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } };
+  cloud.session = readJson(K_SESSION);
+
+  async function http(path, opt) {
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
+    try {
+      const res = await fetch(CLOUD_URL + path, Object.assign({ signal: ctl.signal }, opt));
+      let json = null; try { json = await res.json(); } catch (e) { /* no body */ }
+      return { status: res.status, json };
+    } catch (e) { const err = new Error('network'); err.network = true; throw err; } finally { clearTimeout(timer); }
+  }
+  const baseHeaders = () => ({ apikey: CLOUD_KEY, 'Content-Type': 'application/json' });
+  function toSession(j) {
+    return { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Date.now() + Math.max(60, (j.expires_in || 3600) - 30) * 1000, email: (j.user && j.user.email) || '', uid: (j.user && j.user.id) || '' };
+  }
+  function setSession(s) { cloud.session = s; if (s) writeJson(K_SESSION, s); else { try { store.removeItem(K_SESSION); } catch (e) { /* ignore */ } } }
+  function authError(r) {
+    const j = r.json || {}, m = String(j.msg || j.error_description || j.message || j.error || '').toLowerCase();
+    if (/invalid login/.test(m)) return 'Wrong email or password.';
+    if (/already|registered/.test(m)) return 'That email already has an account. Use Sign in.';
+    if (/password/.test(m) && /(short|least|weak|characters)/.test(m)) return 'Use a password with at least 6 characters.';
+    if (/email/.test(m) && /(invalid|valid)/.test(m)) return 'That email address does not look right.';
+    if (/confirm/.test(m)) return 'Confirm your email first (check your inbox), then sign in.';
+    if (r.status === 429 || /rate/.test(m)) return 'Too many tries. Wait a minute and try again.';
+    return 'Could not sign you in (' + r.status + ').';
+  }
+  async function signIn(email, password, create) {
+    const r = create ? await http('/auth/v1/signup', { method: 'POST', headers: baseHeaders(), body: JSON.stringify({ email, password }) })
+                     : await http('/auth/v1/token?grant_type=password', { method: 'POST', headers: baseHeaders(), body: JSON.stringify({ email, password }) });
+    if (r.status >= 200 && r.status < 300 && r.json && r.json.access_token) { setSession(toSession(r.json)); return { ok: true }; }
+    if (create && r.status >= 200 && r.status < 300) return { ok: false, error: 'Account created. Confirm your email (check your inbox), then sign in.' };
+    return { ok: false, error: authError(r) };
+  }
+  async function refreshToken() {
+    if (!cloud.session) throw signedOut();
+    const r = await http('/auth/v1/token?grant_type=refresh_token', { method: 'POST', headers: baseHeaders(), body: JSON.stringify({ refresh_token: cloud.session.refresh_token }) });
+    if (r.status >= 200 && r.status < 300 && r.json && r.json.access_token) { const e = cloud.session.email; setSession(Object.assign(toSession(r.json), { email: (r.json.user && r.json.user.email) || e })); return; }
+    setSession(null); throw signedOut();
+  }
+  function signedOut() { const e = new Error('signed_out'); e.signedOut = true; return e; }
+  async function rpc(fn, args) {
+    for (let tries = 0; ; tries++) {
+      try {
+        if (!cloud.session) throw signedOut();
+        if (Date.now() > cloud.session.expires_at) await refreshToken();
+        const r = await http('/rest/v1/rpc/' + fn, { method: 'POST', headers: Object.assign(baseHeaders(), { Authorization: 'Bearer ' + cloud.session.access_token }), body: JSON.stringify(args || {}) });
+        if (r.status >= 200 && r.status < 300) return r.json;
+        const msg = String((r.json && (r.json.message || r.json.hint)) || '');
+        if (r.status === 401 && /jwt|expired|not_authenticated/i.test(msg) && tries < 2) { await refreshToken(); continue; }
+        const e = new Error(msg || ('http ' + r.status)); e.status = r.status; throw e;
+      } catch (e) {
+        if (e.network && tries < 2) { await sleep(700 * (tries + 1)); continue; }
+        throw e;
+      }
+    }
+  }
+  function friendly(e) {
+    if (e.signedOut) return 'You were signed out. Please sign in again.';
+    if (e.dbUpdate) return 'The game database needs its latest update (migration 0006). Ask whoever runs the game to install it.';
+    if (e.network) return 'Cannot reach the server. Check your connection and try again.';
+    if (/idempotency_conflict/.test(e.message)) return 'That request clashed with an earlier one. Try again.';
+    return 'The server said no (' + (e.message || e.status) + ').';
+  }
+
+  /* ----- per-account bits the database does not keep: news feed, achievements, visited districts, streaks ----- */
+  function loadExtras(uid) {
+    const x = readJson(K_EXTRA + uid) || {};
+    cloud.extras = { activity: x.activity || [], achievements: x.achievements || {}, visited: x.visited || ['south-side'], purchases: x.purchases || 0, streak: x.streak || 0, bestStreak: x.bestStreak || 0 };
+  }
+  function saveExtras() {
+    if (!cloud.on || !cloud.session || !cloud.extras) return;
+    cloud.extras.activity = S.activity.slice(0, 40); cloud.extras.achievements = S.achievements; cloud.extras.visited = S.visited;
+    cloud.extras.purchases = S.stats.purchases; cloud.extras.streak = S.stats.streak; cloud.extras.bestStreak = S.stats.bestStreak;
+    writeJson(K_EXTRA + cloud.session.uid, cloud.extras);
+  }
+
+  /* ----- server snapshot -> the state shape the rest of the page already understands ----- */
+  function ms(v, skew) { const t = Date.parse(v); return Number.isFinite(t) ? t + skew : 0; }
+  function eventLine(ev, enc, c) {
+    const en = enc.enemy.name;
+    switch (ev.kind) {
+      case 'item_used': return 'You use a ' + ((MOB.ITEM_BY_ID[ev.item] || {}).name || 'bandage') + ' and get back on your feet.';
+      case 'player_hit': return 'You hit the ' + en + ' for ' + ev.damage + '.';
+      case 'player_miss': return 'You swing and miss.';
+      case 'weapon_jammed': return 'Your ' + ((MOB.ITEM_BY_ID[ev.item] || {}).name || 'weapon') + ' jams for good. It needs a gunsmith.';
+      case 'guard': return 'You cover up and wait for the opening.';
+      case 'negotiate_ok': return 'You talk him down. He pockets his hands and looks for a door.';
+      case 'negotiate_fail': return 'He is not in a listening mood.';
+      case 'escape_ok': return 'You break away and lose him in the crowd.';
+      case 'escape_fail': return 'You try to run and he cuts you off.';
+      case 'enemy_hit': return 'The ' + en + ' hits you for ' + ev.damage + (ev.blunted ? ' (blunted by your guard).' : '.');
+      case 'enemy_miss': return 'The ' + en + ' misses.';
+      default: return typeof ev === 'string' ? ev : '';
+    }
+  }
+  function hydrate(srv, prev) {
+    const now = Date.now(), skew = srv.now ? now - srv.now : 0, p = srv.player, ex = cloud.extras;
+    const s = {
+      version: MOB.SAVE_VERSION,
+      player: { name: srv.profile.display_name, portrait: srv.profile.portrait, xp: p.xp, cashMinor: Number(p.cash_minor), health: p.health, energy: p.energy, heat: p.heat, respect: p.respect, attrPoints: p.attr_points,
+        attrs: { strength: p.strength, agility: p.agility, accuracy: p.accuracy, intelligence: p.intelligence, charisma: p.charisma }, district: p.district_id },
+      inventory: srv.inventory || {},
+      equipped: Object.assign({ weapon: null, head: null, outfit: null, outerwear: null, accessory: null }, srv.equipment || {}),
+      missions: {}, combat: null, condition: srv.weapon_condition || {}, businesses: {},
+      daily: srv.daily ? { lastAt: ms(srv.daily.last_at, skew), streak: srv.daily.streak } : { lastAt: 0, streak: 0 },
+      idem: {}, flags: {}, claimed: [],
+      ledger: (srv.transactions || []).map((t, i) => ({ id: 't' + i + '-' + t.at, ts: t.at + skew, type: t.type, amountMinor: Number(t.amount_minor), ref: t.ref })),
+      stats: { attempts: srv.stats.attempts, successes: srv.stats.successes, failures: srv.stats.failures, streak: ex.streak, bestStreak: ex.bestStreak, purchases: ex.purchases },
+      visited: (prev ? prev.visited : ex.visited).slice(), achievements: Object.assign({}, prev ? prev.achievements : ex.achievements), activity: (prev ? prev.activity : ex.activity).slice(),
+      stamps: { health: ms(p.stamp_health, skew) || now, energy: ms(p.stamp_energy, skew) || now, heat: ms(p.stamp_heat, skew) || now },
+    };
+    if (!s.visited.includes(s.player.district)) s.visited.push(s.player.district);
+    for (const f of srv.flags || []) s.flags[f] = now;
+    for (const id of Object.keys(srv.missions || {})) {
+      const m = srv.missions[id];
+      s.missions[id] = { attempts: m.attempts, claimedCount: m.claimed_count, successes: m.successes, cooldownUntil: ms(m.cooldown_until, skew), last: null, active: null, pending: null };
+      if (m.claimed_count > 0) s.claimed.push(id + '#1');
+    }
+    const oa = srv.open_attempt;
+    if (oa) {
+      const log = s.missions[oa.mission_id] || (s.missions[oa.mission_id] = { attempts: 1, claimedCount: 0, successes: 0, cooldownUntil: 0, last: null, active: null, pending: null });
+      if (oa.status === 'active') log.active = { attemptId: oa.attempt_id, startedAt: oa.started_at + skew };
+      else {
+        const r = oa.result || {}, mi = MOB.MISSION_BY_ID[oa.mission_id], ch = mi && mi.choices.find((c) => c.id === r.choice_id);
+        log.pending = { attemptId: oa.attempt_id, choiceId: r.choice_id, outcome: r.outcome, chance: Number(r.chance), text: ch ? ch.text[r.outcome] : '', cashMinor: Number(r.cash_minor), cashLostMinor: Number(r.cash_lost_minor), xp: r.xp, respect: r.respect, heat: r.heat, healthLost: r.health_lost, flags: r.flags || [] };
+      }
+    }
+    for (const id of Object.keys(srv.businesses || {})) s.businesses[id] = { level: srv.businesses[id].level, lastCollectAt: ms(srv.businesses[id].last_collect_at, skew) };
+    if (srv.combat) {
+      const enc = MOB.ENCOUNTER_BY_ID[srv.combat.encounter_id];
+      s.combat = { encId: srv.combat.encounter_id, round: srv.combat.round, enemyHp: srv.combat.enemy_hp, enemyMax: srv.combat.enemy_max,
+        log: [enc.intro].concat((srv.combat.log || []).map((ev) => eventLine(ev, enc))).filter(Boolean).slice(-9) };
+    }
+    return s;
+  }
+  async function pullState() { const srv = await rpc('game_get_state'); return srv.ok ? hydrate(srv, S) : null; }
+
+  /* ----- actions: send to the server, then rebuild the view ----- */
+  const unlockedNow = (s) => MOB.MISSIONS.filter((x) => MOB.missionStatus(s, x, Date.now()).state === 'available').map((x) => x.id);
+  const districtsNow = (s) => MOB.DISTRICTS.filter((d) => MOB.playerRankIdx(s) >= MOB.RANK_IDX[d.rankReq]).map((d) => d.id);
+  const CLOUD_ACTIONS = {
+    startMission: { fn: 'game_start_mission', args: (p, k) => ({ p_key: k, p_mission_id: p.missionId }) },
+    resolveMission: { fn: 'game_resolve_mission', args: (p, k) => ({ p_key: k, p_mission_id: p.missionId, p_choice_id: p.choiceId }) },
+    claimMission: { fn: 'game_claim_mission', args: (p, k) => ({ p_key: k, p_mission_id: p.missionId }) },
+    buyItem: { fn: 'game_buy_item', args: (p, k) => ({ p_key: k, p_item_id: p.itemId }) },
+    equipItem: { fn: 'game_equip_item', args: (p, k) => ({ p_key: k, p_item_id: p.itemId }) },
+    unequipItem: { fn: 'game_unequip_item', args: (p, k) => ({ p_key: k, p_slot: p.slot }) },
+    useItem: { fn: 'game_use_item', args: (p, k) => ({ p_key: k, p_item_id: p.itemId }) },
+    travel: { fn: 'game_travel', args: (p, k) => ({ p_key: k, p_district_id: p.districtId }) },
+    buyBusiness: { fn: 'game_buy_business', args: (p, k) => ({ p_key: k, p_business_id: p.businessId }) },
+    collectBusiness: { fn: 'game_collect_business', args: (p, k) => ({ p_key: k, p_business_id: p.businessId }) },
+    upgradeBusiness: { fn: 'game_upgrade_business', args: (p, k) => ({ p_key: k, p_business_id: p.businessId }) },
+    startEncounter: { fn: 'game_start_encounter', args: (p, k) => ({ p_key: k, p_encounter_id: p.encounterId }) },
+    combatAction: { fn: 'game_combat_action', args: (p, k) => (p.itemId ? { p_key: k, p_action: p.action, p_item_id: p.itemId } : { p_key: k, p_action: p.action }) },
+    repairWeapon: { fn: 'game_repair_weapon', args: (p, k) => ({ p_key: k, p_item_id: p.itemId }) },
+    spendAttribute: { fn: 'game_spend_attribute', args: (p, k) => ({ p_key: k, p_attr: p.attr }) },
+    claimDaily: { fn: 'game_claim_daily', args: (p, k) => ({ p_key: k }) },
+    patchUp: { fn: 'game_patch_up', args: (p, k) => ({ p_key: k }) },
+    updateProfile: { fn: 'game_update_profile', args: (p, k) => ({ p_key: k, p_display_name: p.name, p_portrait: p.portrait }) },
+  };
+  /* what the page shows after each action: the same words the offline engine uses */
+  function describe(action, p, r, prev, next) {
+    const item = (id) => (MOB.ITEM_BY_ID[id] || {}).name || 'item', m = MOB.MISSION_BY_ID[p.missionId], biz = MOB.BUSINESS_BY_ID[p.businessId], money = MOB.fmtMoney;
+    const log = (t, k) => MOB.pushActivity(next, t, k || 'event', Date.now());
+    switch (action) {
+      case 'startMission': log('Started "' + m.title + '" (−' + m.energy + ' energy).'); return { message: 'You took the job. −' + m.energy + ' energy.' };
+      case 'resolveMission': log('Finished the work on "' + m.title + '" (' + m.choices.find((c) => c.id === p.choiceId).label + '). Claim your reward.'); return { result: next.missions[p.missionId].pending };
+      case 'claimMission': {
+        const pend = (prev.missions[p.missionId] || {}).pending || {};
+        const verb = r.outcome === 'success' ? 'Completed' : r.outcome === 'partial' ? 'Partly finished' : 'Failed';
+        let line = verb + ' "' + m.title + '".'; if (r.cash_minor) line += ' +' + money(r.cash_minor) + '.'; if (r.cash_lost_minor) line += ' Lost ' + money(r.cash_lost_minor) + '.'; if (r.health_lost) line += ' Took ' + r.health_lost + ' damage.';
+        log(line, r.outcome);
+        if (r.knocked_out) log('You were knocked out and came to in an alley with your health restored to ' + MOB.CONFIG.defeatRecoveryHealth + '.', 'failure');
+        (r.promotions || []).forEach((n) => log('You were promoted to ' + n + '.', 'promotion'));
+        if (r.outcome === 'failure') next.stats.streak = 0; else { next.stats.streak += 1; next.stats.bestStreak = Math.max(next.stats.bestStreak, next.stats.streak); }
+        const before = unlockedNow(prev), dBefore = districtsNow(prev);
+        return { result: Object.assign({}, pend, { attemptId: r.attempt_id, outcome: r.outcome, cashMinor: Number(r.cash_minor), cashLostMinor: Number(r.cash_lost_minor), xp: r.xp, respect: r.respect, heat: r.heat, healthLost: r.health_lost,
+          knockedOut: r.knocked_out, promotions: (r.promotions || []).map((n) => ({ rank: n })), attrPointsGained: r.attr_points_gained, missionId: m.id,
+          districts: districtsNow(next).filter((d) => !dBefore.includes(d)).map((d) => MOB.DISTRICT_BY_ID[d].name),
+          unlocked: unlockedNow(next).filter((x) => !before.includes(x) && x !== m.id).map((x) => MOB.MISSION_BY_ID[x].title), achievements: [] }) };
+      }
+      case 'buyItem': next.stats.purchases += 1; log('Bought ' + item(p.itemId) + ' for ' + money(r.price_minor) + '.', 'shop'); return { message: item(p.itemId) + ' added to your inventory.' };
+      case 'equipItem': log('Equipped ' + item(p.itemId) + '.'); return { message: item(p.itemId) + ' equipped.' };
+      case 'unequipItem': { const n = item(prev.equipped[p.slot]); log('Unequipped ' + n + '.'); return { message: n + ' unequipped.' }; }
+      case 'useItem': { const e = (MOB.ITEM_BY_ID[p.itemId] || {}).effect || {}; log('Used ' + item(p.itemId) + '.'); return { message: 'Used ' + item(p.itemId) + (e.health ? '. +' + e.health + ' health' : e.energy ? '. +' + e.energy + ' energy' : '') + '.' }; }
+      case 'travel': { const d = MOB.DISTRICT_BY_ID[p.districtId]; log('Traveled to ' + d.name + '.', 'event'); return { message: 'Welcome to ' + d.name + '.' }; }
+      case 'buyBusiness': log('Bought the ' + biz.name + ' for ' + money(r.price_minor) + '.', 'shop'); next.stats.purchases += 1; return { message: 'You now own the ' + biz.name + '.' };
+      case 'collectBusiness': log('Collected ' + money(r.net_minor) + ' from the ' + biz.name + '.', 'shop'); return { message: 'Collected ' + money(r.net_minor) + ' from the ' + biz.name + '.' };
+      case 'upgradeBusiness': log('Upgraded the ' + biz.name + '.', 'shop'); return { message: biz.name + ' is now ' + MOB.BUSINESS_LEVELS[r.level - 1] + '.' };
+      case 'startEncounter': { const en = MOB.ENCOUNTER_BY_ID[p.encounterId]; log('Picked a fight: "' + en.title + '" (−' + en.energy + ' energy).'); return { message: 'Fight started. −' + en.energy + ' energy.' }; }
+      case 'combatAction': {
+        const enc = MOB.ENCOUNTER_BY_ID[(prev.combat || {}).encId], lines = (r.events || []).map((ev) => eventLine(ev, enc));
+        let ended = null;
+        if (r.ended) {
+          const e = r.ended, dBefore = districtsNow(prev);
+          ended = { outcome: e.outcome, encId: e.encounter_id, title: enc.title, cashMinor: Number(e.cash_minor), lostMinor: Number(e.lost_minor), xp: e.xp, respect: e.respect, heat: e.heat, promotions: (e.promotions || []).map((n) => ({ rank: n })),
+            attrPointsGained: e.attr_points_gained, districts: districtsNow(next).filter((d) => !dBefore.includes(d)).map((d) => MOB.DISTRICT_BY_ID[d].name), achievements: [], knockedOut: e.knocked_out };
+          log('Fight over: ' + enc.title + ' (' + e.outcome + ').', e.outcome === 'defeated' ? 'failure' : 'event');
+        }
+        return { result: { events: lines, ended } };
+      }
+      case 'repairWeapon': log('Had the ' + item(p.itemId) + ' repaired.', 'shop'); return { message: item(p.itemId) + ' restored to excellent condition.' };
+      case 'spendAttribute': return { message: MOB.ATTR_LABEL[p.attr] + ' is now ' + r.value + '.' };
+      case 'claimDaily': log('Collected the daily envelope: +' + money(r.cash_minor) + ', +' + r.energy + ' energy.', 'event'); return { message: 'Envelope collected: +' + money(r.cash_minor) + ', +' + r.energy + ' energy.' };
+      case 'patchUp': log('Paid a back-alley doctor ' + money(r.cost_minor) + ' to patch you up.', 'shop'); return { message: 'Patched up. Back to full health.' };
+      case 'updateProfile': return { message: 'Profile saved.' };
+      default: return {};
+    }
+  }
+  async function cloudAct(action, params) {
+    const def = CLOUD_ACTIONS[action];
+    if (!def) return { ok: false, error: 'That is not available online yet.' };
+    if (cloud.busy) return { ok: false, error: 'One moment, the last move is still going through.' };
+    cloud.busy = true; document.body.classList.add('busy');
+    try {
+      const r = await rpc(def.fn, def.args(params, newKey()));
+      if (!r || !r.ok) { const fresh = await pullState().catch(() => null); if (fresh) { S = fresh; render(); } return { ok: false, error: (r && r.error) || 'That did not work.' }; }
+      const prev = S, next = await pullState();
+      if (!next) return { ok: false, error: 'Could not read your game back from the server.' };
+      const out = describe(action, params, r, prev, next);
+      const gained = MOB.checkAchievements(next, Date.now());
+      if (out.result && out.result.achievements) out.result.achievements = gained;
+      if (out.result && out.result.ended) out.result.ended.achievements = gained;
+      return { ok: true, state: next, message: out.message, result: out.result, achievements: gained };
+    } catch (e) {
+      if (e.signedOut) { showAuth(friendly(e)); }
+      return { ok: false, error: friendly(e) };
+    } finally { cloud.busy = false; document.body.classList.remove('busy'); }
+  }
+
+  /* ----- sign-in and first-character screens ----- */
+  function authRoot() { let el = document.getElementById('auth-root'); if (!el) { el = document.createElement('div'); el.id = 'auth-root'; document.body.appendChild(el); } return el; }
+  function closeAuth() { const el = document.getElementById('auth-root'); if (el) el.innerHTML = ''; }
+  function authShell(inner) { return '<div class="modal-back auth"><div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="au-title" tabindex="-1"><div class="modal-body">' + inner + '</div></div></div>'; }
+  function showLoading(text) { authRoot().innerHTML = authShell('<h2 id="au-title">MOB: The Underworld</h2><p style="color:var(--muted)">' + esc(text) + '</p>'); }
+  function showAuth(msg) {
+    cloud.on = false;
+    authRoot().innerHTML = authShell('<div><div class="eyebrow">Chicago, 1931</div><h2 id="au-title">Join the Outfit</h2></div>' +
+      '<p style="color:var(--muted)">Sign in to keep your progress on the server and play from any device. Or try the offline demo, which saves only in this browser.</p>' +
+      '<form id="auth-form" novalidate><div class="field"><label for="au-email">Email</label><input id="au-email" type="email" autocomplete="email" inputmode="email" required></div>' +
+      '<div class="field"><label for="au-pass">Password</label><input id="au-pass" type="password" autocomplete="current-password" minlength="6" required></div>' +
+      '<div class="err" id="au-err" role="alert">' + esc(msg || '') + '</div>' +
+      '<div class="row-end" style="flex-wrap:wrap"><button type="submit" class="btn" data-mode="in">Sign in</button><button type="button" class="btn ghost" data-act="auth-create">Create account</button></div></form>' +
+      '<div class="row-end"><button type="button" class="btn ghost sm" data-act="auth-offline">Play the offline demo</button></div>');
+  }
+  function showCreateCharacter(msg) {
+    return new Promise((resolve) => {
+      let pick = 1;
+      const draw = (m) => {
+        authRoot().innerHTML = authShell('<div><div class="eyebrow">Welcome to Chicago</div><h2 id="au-title">Who are you?</h2></div>' +
+          '<form id="char-form" novalidate><div class="field"><label for="ch-name">Display name</label><input id="ch-name" maxlength="20" autocomplete="off" value="Tommy Malone"><div class="err" id="ch-err" role="alert">' + esc(m || '') + '</div></div>' +
+          '<div class="field"><label id="ch-pl">Portrait</label><div class="portrait-pick" role="radiogroup" aria-labelledby="ch-pl">' +
+          ART.PORTRAITS.map((p, i) => '<button type="button" role="radio" aria-checked="' + (pick === i) + '" aria-label="' + esc(p.name) + '" data-pick="' + i + '">' + portrait(i, 80) + '</button>').join('') + '</div></div>' +
+          '<div class="row-end"><button type="submit" class="btn">Start playing</button></div></form>');
+        const f = document.getElementById('char-form');
+        f.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => { pick = Number(b.dataset.pick); f.querySelectorAll('[data-pick]').forEach((x) => x.setAttribute('aria-checked', String(x === b))); }));
+        f.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const name = document.getElementById('ch-name').value;
+          try {
+            const r = await rpc('game_create_player', { p_display_name: name, p_portrait: pick });
+            if (r && r.ok) resolve(true); else draw((r && r.error) || 'That name did not work.');
+          } catch (er) { draw(friendly(er)); }
+        });
+      };
+      draw(msg);
+    });
+  }
+  async function startCloud() {
+    showLoading('Connecting to the server…');
+    try {
+      loadExtras(cloud.session.uid);
+      let srv = await rpc('game_get_state');
+      if (srv.ok && !srv.stats) { const er = new Error('db_update'); er.dbUpdate = true; throw er; }
+      if (!srv.ok) { await showCreateCharacter(); srv = await rpc('game_get_state'); if (!srv.ok) throw new Error('state'); }
+      cloud.on = true; try { store.setItem(K_MODE, 'cloud'); } catch (e) { /* ignore */ }
+      S = MOB.regen(hydrate(srv, null), Date.now());
+      MOB.checkAchievements(S, Date.now());
+      ui.modal = null; ui.sub = {}; closeAuth(); saveExtras(); render();
+    } catch (e) {
+      if (e.signedOut) showAuth(friendly(e)); else { showAuth(friendly(e)); }
+    }
+  }
+  function goOffline() {
+    cloud.on = false; try { store.setItem(K_MODE, 'local'); } catch (e) { /* ignore */ }
+    const l = MOB.loadState(store); S = MOB.regen(l.state, Date.now()); ui.modal = null; ui.sub = {}; closeAuth(); render();
+  }
+  async function signOutCloud() {
+    try { if (cloud.session) await http('/auth/v1/logout', { method: 'POST', headers: Object.assign(baseHeaders(), { Authorization: 'Bearer ' + cloud.session.access_token }) }); } catch (e) { /* ignore */ }
+    setSession(null); cloud.on = false; try { store.removeItem(K_MODE); } catch (e) { /* ignore */ }
+    showAuth('You are signed out.');
+  }
+  document.addEventListener('submit', async (e) => {
+    if (e.target.id !== 'auth-form') return;
+    e.preventDefault();
+    const email = document.getElementById('au-email').value.trim(), pass = document.getElementById('au-pass').value, err = document.getElementById('au-err');
+    const create = e.submitter && e.submitter.dataset.mode === 'up' || e.target.dataset.creating === '1';
+    if (!email || !pass) { err.textContent = 'Enter your email and a password.'; return; }
+    err.textContent = ''; e.target.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+    try {
+      const r = await signIn(email, pass, create);
+      if (r.ok) await startCloud(); else { showAuth(r.error); document.getElementById('au-email').value = email; }
+    } catch (er) { showAuth(friendly(er)); document.getElementById('au-email').value = email; }
+  });
+  document.addEventListener('click', async (e) => {
+    const t = e.target.closest('[data-act]'); if (!t) return;
+    if (t.dataset.act === 'auth-create') { const f = document.getElementById('auth-form'); f.dataset.creating = '1'; f.requestSubmit(); }
+    else if (t.dataset.act === 'auth-offline') goOffline();
+    else if (t.dataset.act === 'sign-out') signOutCloud();
+    else if (t.dataset.act === 'go-online') { if (cloud.session) startCloud(); else showAuth(''); }
+  });
+  /* keep the view fresh: pull the server state now and then and when the tab comes back */
+  async function cloudRefresh() {
+    if (!cloud.on || cloud.busy || ui.resolving || document.hidden || (ui.modal && ui.modal.type === 'profile')) return;
+    try { const next = await pullState(); if (next && !cloud.busy) { S = next; saveExtras(); render(); } } catch (e) { if (e.signedOut) showAuth(friendly(e)); }
+  }
+  setInterval(cloudRefresh, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) cloudRefresh(); });
+
   /* ---------- boot ---------- */
   render();
   if (loaded.status === 'recovered') toast('Your saved game could not be read, so a fresh demo was started.', 'error');
   save();
+  if (CLOUD_ENABLED) { if (cloud.session) startCloud(); else if (store.getItem(K_MODE) !== 'local') showAuth(''); }
 })();
 </script>
+</body></html>
