@@ -1,0 +1,12 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Connection Check</title>
+<style>:root{--bg:#101010;--fg:#e6dcc3;--ok:#7fb48a;--bad:#c0505a}@media (prefers-color-scheme:light){:root{--bg:#f5f1e6;--fg:#222}}body{background:var(--bg);color:var(--fg);font:16px system-ui;margin:0;padding:16px}h1{font-size:22px}pre{white-space:pre-wrap;word-break:break-word;font-size:13px}.ok{color:var(--ok)}.bad{color:var(--bad)}button{min-height:44px;padding:0 16px;font-size:16px}</style></head>
+<body><h1>Supabase connection check</h1><p>Tests whether this page is allowed to talk to the game database.</p><button id="go">Run check</button><pre id="out"></pre>
+<script>
+const URL_='https://wafihqqnixmwebswkvcq.supabase.co',KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndhZmlocXFuaXhtd2Vic3drdmNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4MTcwMTAsImV4cCI6MjEwODM5MzAxMH0.lKGINYch6Hk905d8AaSqs990jjJexb0b2fDiFk08U2U';
+const out=document.getElementById('out');const log=(t,c)=>{out.innerHTML+='<span class="'+(c||'')+'">'+t.replace(/</g,'&lt;')+'</span>\n'};
+async function t(name,path,opt){try{const r=await fetch(URL_+path,Object.assign({headers:{apikey:KEY}},opt||{}));const b=(await r.text()).slice(0,140);log(name+': HTTP '+r.status+' '+b,r.status<500?'ok':'bad')}catch(e){log(name+': BLOCKED ('+e.message+')','bad')}}
+document.getElementById('go').onclick=async()=>{out.innerHTML='';
+await t('auth health','/auth/v1/health');
+await t('game function (should be refused for anonymous)','/rest/v1/rpc/game_get_state',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:'{}'});
+log('Done. "HTTP 4xx" lines are fine: they mean the page reached Supabase.')};
+</script></body></html>
