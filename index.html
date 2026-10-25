@@ -2784,10 +2784,11 @@ const ART = (function () {
   }
 
   function pageRankings() {
+    if (cloud.on && !rankUi.failed) return pageRankingsOnline();
     const rows = MOB.leaderboard(S, ui.sort);
     const tabs = [['xp', 'Experience'], ['respect', 'Respect'], ['networth', 'Net worth']];
     const th = (k, label) => '<th class="' + (ui.sort === k ? 'sorted' : '') + '">' + label + '</th>';
-    return bannerHead('bg_cardroom', 'An empty card table under a single pendant lamp, with chips, cards and a ledger', 'The Outfit\'s ledger', 'Rankings', 'Eight fictional demo profiles and you. These are not real players and nothing here is live.',
+    return bannerHead('bg_cardroom', 'An empty card table under a single pendant lamp, with chips, cards and a ledger', 'The Outfit\'s ledger', 'Rankings', (cloud.on && rankUi.note ? rankUi.note + ' ' : '') + 'Eight fictional demo profiles and you. These are not real players and nothing here is live.',
       '<div class="filters" role="tablist" aria-label="Sort rankings">' + tabs.map((t) => '<button class="filter" role="tab" data-act="sort" data-k="' + t[0] + '" aria-selected="' + (ui.sort === t[0]) + '">Sort by ' + t[1] + '</button>').join('') + '</div>') +
       '<div class="table-wrap"><table class="rank"><thead><tr><th>#</th><th>Player</th><th>Rank</th>' + th('xp', 'XP') + th('respect', 'Respect') + th('networth', 'Net worth') + '</tr></thead><tbody>' +
       rows.map((r) => '<tr data-pg="item" class="' + (r.isYou ? 'you' : '') + '"><td class="pos">' + r.position + '</td><td><div class="pl">' + portrait(r.portrait, 42) + '<div><b>' + esc(r.name) + '</b><div>' + (r.isYou ? '<span class="chip gold">You · demo</span>' : '<span class="chip demo">Fictional demo</span>') + '</div></div></div></td>' +
@@ -3844,6 +3845,28 @@ const ART = (function () {
       crewCall(a === 'crew-deposit' ? 'game_crew_deposit' : 'game_crew_withdraw', { p_amount_minor: m }, a === 'crew-deposit' ? 'Deposited.' : 'Withdrawn.');
     }
   });
+
+  /* ---------- real rankings (online) ---------- */
+  const rankUi = { data: null, sort: null, at: 0, loading: false, failed: false, note: '' };
+  async function loadRank() {
+    if (!cloud.on || rankUi.loading) return;
+    rankUi.loading = true; const want = ui.sort;
+    try { const r = await rpc('game_rankings', { p_sort: want }); if (r && r.ok) { rankUi.data = r; rankUi.sort = want; rankUi.at = Date.now(); rankUi.failed = false; } }
+    catch (e) { if (e.signedOut) { showAuth(friendly(e)); } else if (e.status === 404) { rankUi.failed = true; rankUi.note = 'Real rankings need the latest database update (migration 0008), so demo profiles are shown.'; } }
+    finally { rankUi.loading = false; if (ui.route === 'rankings') render(); }
+  }
+  function pageRankingsOnline() {
+    if ((rankUi.sort !== ui.sort || Date.now() - rankUi.at > 30000) && !rankUi.loading) setTimeout(loadRank, 0);
+    const tabs = [['xp', 'Experience'], ['respect', 'Respect'], ['networth', 'Net worth']];
+    const th = (k, label) => '<th class="' + (ui.sort === k ? 'sorted' : '') + '">' + label + '</th>';
+    const rows = rankUi.data && rankUi.sort === ui.sort ? rankUi.data.rows : (rankUi.data ? rankUi.data.rows : null);
+    const sub = rankUi.data ? 'Real players, live from the server. ' + rankUi.data.total + ' on the books.' : 'Loading the ledger…';
+    return head('The Outfit\'s ledger', 'Rankings', sub) +
+      '<div class="filters" role="tablist" aria-label="Sort rankings">' + tabs.map((t) => '<button class="filter" role="tab" data-act="sort" data-k="' + t[0] + '" aria-selected="' + (ui.sort === t[0]) + '">Sort by ' + t[1] + '</button>').join('') + '</div>' +
+      (rows ? '<div class="table-wrap"><table class="rank"><thead><tr><th>#</th><th>Player</th><th>Rank</th>' + th('xp', 'XP') + th('respect', 'Respect') + th('networth', 'Net worth') + '</tr></thead><tbody>' +
+        rows.map((r) => '<tr data-pg="item" class="' + (r.is_you ? 'you' : '') + '"><td class="pos">' + r.position + '</td><td><div class="pl">' + portrait(r.portrait, 42) + '<div><b>' + esc(r.name) + '</b><div>' + (r.is_you ? '<span class="chip gold">You</span> ' : '') + (r.crew ? '<span class="chip">' + esc(r.crew) + '</span>' : '') + '</div></div></div></td>' +
+          '<td>' + esc(r.rank) + '</td><td class="' + (ui.sort === 'xp' ? 'sorted' : '') + '">' + MOB.fmtNum(r.xp) + '</td><td class="' + (ui.sort === 'respect' ? 'sorted' : '') + '">' + MOB.fmtNum(r.respect) + '</td><td class="' + (ui.sort === 'networth' ? 'sorted' : '') + '">' + money(Number(r.networth_minor)) + '</td></tr>').join('') + '</tbody></table></div>' : '');
+  }
 
   /* ---------- boot ---------- */
   render();
