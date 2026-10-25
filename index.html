@@ -3144,7 +3144,7 @@ const ART = (function () {
     syncModalHistory();
     const root = $('#modal-root');
     if (!ui.modal) { root.innerHTML = ''; lastModalKey = null; return; }
-    const html = ui.modal.type === 'mission' ? missionModal() : ui.modal.type === 'item' ? itemModal() : ui.modal.type === 'profile' ? profileModal() : ui.modal.type === 'fight' ? fightModal() : resetModal();
+    const html = ui.modal.type === 'mission' ? missionModal() : ui.modal.type === 'item' ? itemModal() : ui.modal.type === 'profile' ? profileModal() : ui.modal.type === 'player' ? playerModal() : ui.modal.type === 'fight' ? fightModal() : resetModal();
     const key = modalKey();
     const prevScroll = root.querySelector('.modal') ? root.querySelector('.modal').scrollTop : 0;
     root.innerHTML = html;
@@ -3789,7 +3789,7 @@ const ART = (function () {
         acts += ['member', 'recruiter', 'officer'].filter((r) => r !== m.role).map((r) => '<button class="btn sm ghost" data-act="crew-role" data-id="' + m.id + '" data-role="' + r + '">Make ' + ROLE_NAME[r] + '</button>').join('') + askRow('transfer', m.id, 'Hand over lead');
       }
       if (!isMe && me.can_kick && lower) acts += askRow('kick', m.id, 'Remove');
-      return '<article data-pg="item" class="card" style="padding:12px;display:grid;gap:8px"><div class="pl" style="display:flex;gap:10px;align-items:center">' + portrait(m.portrait, 40) + '<div style="min-width:0"><b>' + esc(m.name) + (isMe ? ' (you)' : '') + '</b><div style="color:var(--muted);font-size:13px">' + esc(m.rank) + '</div></div><span class="chip' + (m.role === 'leader' ? ' gold' : '') + '" style="margin-left:auto">' + ROLE_NAME[m.role] + '</span></div>' + (acts ? '<div style="display:flex;gap:6px;flex-wrap:wrap">' + acts + '</div>' : '') + '</article>';
+      return '<article data-pg="item" class="card" style="padding:12px;display:grid;gap:8px"><div class="pl" data-act="open-player" data-id="' + esc(m.id) + '" style="display:flex;gap:10px;align-items:center;cursor:pointer">' + portrait(m.portrait, 40) + '<div style="min-width:0"><b>' + esc(m.name) + (isMe ? ' (you)' : '') + '</b><div style="color:var(--muted);font-size:13px">' + esc(m.rank) + '</div></div><span class="chip' + (m.role === 'leader' ? ' gold' : '') + '" style="margin-left:auto">' + ROLE_NAME[m.role] + '</span></div>' + (acts ? '<div style="display:flex;gap:6px;flex-wrap:wrap">' + acts + '</div>' : '') + '</article>';
     }).join('');
     const reqs = (d.requests || []).map((r) => crewCard('<b>' + esc(r.name) + '</b><span style="color:var(--muted)">' + (r.kind === 'application' ? 'Wants to join' : 'Invited by ' + esc(r.by)) + '</span><div style="display:flex;gap:8px;flex-wrap:wrap">' +
       (r.kind === 'application' ? '<button class="btn sm" data-act="crew-respond" data-id="' + r.id + '" data-yes="1">Accept</button><button class="btn sm ghost" data-act="crew-respond" data-id="' + r.id + '" data-yes="0">Decline</button>' : '') +
@@ -3861,13 +3861,47 @@ const ART = (function () {
     const tabs = [['xp', 'Experience'], ['respect', 'Respect'], ['networth', 'Net worth']];
     const th = (k, label) => '<th class="' + (ui.sort === k ? 'sorted' : '') + '">' + label + '</th>';
     const rows = rankUi.data && rankUi.sort === ui.sort ? rankUi.data.rows : (rankUi.data ? rankUi.data.rows : null);
-    const sub = rankUi.data ? 'Real players, live from the server. ' + rankUi.data.total + ' on the books.' : 'Loading the ledger…';
+    const sub = rankUi.data ? 'Real players, live from the server. ' + rankUi.data.total + ' on the books. Tap a name to see their profile.' : 'Loading the ledger…';
     return head('The Outfit\'s ledger', 'Rankings', sub) +
       '<div class="filters" role="tablist" aria-label="Sort rankings">' + tabs.map((t) => '<button class="filter" role="tab" data-act="sort" data-k="' + t[0] + '" aria-selected="' + (ui.sort === t[0]) + '">Sort by ' + t[1] + '</button>').join('') + '</div>' +
       (rows ? '<div class="table-wrap"><table class="rank"><thead><tr><th>#</th><th>Player</th><th>Rank</th>' + th('xp', 'XP') + th('respect', 'Respect') + th('networth', 'Net worth') + '</tr></thead><tbody>' +
-        rows.map((r) => '<tr data-pg="item" class="' + (r.is_you ? 'you' : '') + '"><td class="pos">' + r.position + '</td><td><div class="pl">' + portrait(r.portrait, 42) + '<div><b>' + esc(r.name) + '</b><div>' + (r.is_you ? '<span class="chip gold">You</span> ' : '') + (r.crew ? '<span class="chip">' + esc(r.crew) + '</span>' : '') + '</div></div></div></td>' +
+        rows.map((r) => '<tr data-pg="item" data-act="open-player" data-id="' + esc(r.id) + '" style="cursor:pointer" class="' + (r.is_you ? 'you' : '') + '"><td class="pos">' + r.position + '</td><td><div class="pl">' + portrait(r.portrait, 42) + '<div><b>' + esc(r.name) + '</b><div>' + (r.is_you ? '<span class="chip gold">You</span> ' : '') + (r.crew ? '<span class="chip">' + esc(r.crew) + '</span>' : '') + '</div></div></div></td>' +
           '<td>' + esc(r.rank) + '</td><td class="' + (ui.sort === 'xp' ? 'sorted' : '') + '">' + MOB.fmtNum(r.xp) + '</td><td class="' + (ui.sort === 'respect' ? 'sorted' : '') + '">' + MOB.fmtNum(r.respect) + '</td><td class="' + (ui.sort === 'networth' ? 'sorted' : '') + '">' + money(Number(r.networth_minor)) + '</td></tr>').join('') + '</tbody></table></div>' : '');
   }
+
+  /* ---------- other players' profiles (online) ---------- */
+  function playerModal() {
+    const m = ui.modal, d = m.data;
+    const head2 = '<div class="modal-head"><div><div class="eyebrow">Dossier</div><h2 id="im-title">' + (d ? esc(d.name) : 'Player') + '</h2></div><button class="icon-btn" data-act="close-modal" aria-label="Close">' + icon('x', 18) + '</button></div>';
+    let body;
+    if (m.err) body = '<p>' + esc(m.err) + '</p>';
+    else if (!d) body = '<p style="color:var(--muted)">Pulling the file…</p>';
+    else {
+      const rate = d.jobs ? Math.round((d.jobs_won / d.jobs) * 100) + '%' : 'No jobs yet';
+      const mine = crewUi.data && crewUi.data.crew && crewUi.data.me && crewUi.data.me.can_recruit;
+      const canInvite = mine && !d.crew && !d.is_you;
+      body = '<div style="display:flex;gap:14px;align-items:center"><div style="width:96px;height:96px;flex:none;overflow:hidden;border:2px solid var(--gold);border-radius:3px">' + portrait(d.portrait, 96).replace('<img ', '<img style="width:96px;height:96px;object-fit:cover" ') + '</div><div style="min-width:0"><div class="pc-meta"><span class="chip gold">' + esc(d.rank) + '</span>' + (d.is_you ? '<span class="chip">You</span>' : '') + (d.crew ? '<span class="chip">' + esc(d.crew) + ' · ' + (ROLE_NAME[d.crew_role] || '') + '</span>' : '<span class="chip">No crew</span>') + '</div></div></div>' +
+        '<div class="facts" style="margin-top:12px"><div><small>Experience</small><b class="num">' + MOB.fmtNum(d.xp) + '</b></div><div><small>Respect</small><b class="num">' + MOB.fmtNum(d.respect) + '</b></div>' +
+        '<div><small>Net worth</small><b class="num" style="color:var(--gold)">' + money(Number(d.networth_minor)) + '</b></div><div><small>Jobs done</small><b class="num">' + d.jobs + '</b></div>' +
+        '<div><small>Success rate</small><b class="num">' + rate + '</b></div><div><small>In the city since</small><b>' + new Date(d.joined_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) + '</b></div></div>' +
+        (canInvite ? '<div style="margin-top:12px"><button class="btn" data-act="player-invite" data-name="' + esc(d.name) + '">Invite to ' + esc(crewUi.data.crew.name) + '</button></div>' : '');
+    }
+    return '<div class="modal-back" data-act="backdrop"><div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="im-title" tabindex="-1">' + head2 + '<div class="modal-body">' + body + '</div></div></div>';
+  }
+  document.addEventListener('click', async (e) => {
+    const t = e.target.closest('[data-act="open-player"], [data-act="player-invite"]'); if (!t || !cloud.on) return;
+    if (t.dataset.act === 'player-invite') { ui.modal = null; render(); await crewCall('game_crew_invite', { p_player_name: t.dataset.name }, 'Invitation sent.'); return; }
+    const id = t.dataset.id; if (!id) return;
+    ui.modal = { type: 'player', id, data: null, err: '' }; render();
+    if (!crewUi.data) loadCrew(true);
+    try {
+      const r = await rpc('game_player_profile', { p_player_id: id });
+      if (ui.modal && ui.modal.type === 'player' && ui.modal.id === id) { if (r.ok) ui.modal.data = r; else ui.modal.err = r.error || 'That player could not be found.'; render(); }
+    } catch (er) {
+      if (er.signedOut) { showAuth(friendly(er)); return; }
+      if (ui.modal && ui.modal.type === 'player') { ui.modal.err = er.status === 404 ? 'Profiles need the latest database update (migration 0010). Ask whoever runs the game to install it.' : friendly(er); render(); }
+    }
+  });
 
   /* ---------- boot ---------- */
   render();
