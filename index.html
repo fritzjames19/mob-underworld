@@ -2293,12 +2293,13 @@ const ART = (function () {
   const PHOTOS = { bg_hero_dashboard: 1, bg_shop_counter: 1, bg_cardroom: 1, bg_dossier_desk: 1, tex_newsprint: 1, npc_frankie: 1,
     pl_01: 1, pl_02: 1, pl_03: 1, pl_04: 1, pl_05: 1, pl_06: 1,
     region_loop: 1, region_near_north: 1, region_south_side: 1, region_riverfront: 1, region_west_side: 1,
-    item_colt_police_positive: 1, item_winchester_1897: 1, item_colt_m1911: 1 };
-  const SMALL = { npc_frankie: 1, pl_01: 1, pl_02: 1, pl_03: 1, pl_04: 1, pl_05: 1, pl_06: 1, item_colt_police_positive: 1, item_winchester_1897: 1, item_colt_m1911: 1 };
+    item_colt_police_positive: 1, item_winchester_1897: 1, item_colt_m1911: 1,
+    item_colt_official_police: 1, item_sw_38_military_police: 1, biz_restaurant: 1, biz_jazz_club: 1, biz_warehouse: 1, biz_trading_office: 1 };
+  const SMALL = { npc_frankie: 1, pl_01: 1, pl_02: 1, pl_03: 1, pl_04: 1, pl_05: 1, pl_06: 1, item_colt_police_positive: 1, item_winchester_1897: 1, item_colt_m1911: 1, item_colt_official_police: 1, item_sw_38_military_police: 1 };
   const PORTRAIT_PHOTO = { 0: 'pl_01', 1: 'pl_02', 2: 'pl_03', 3: 'pl_04', 4: 'pl_05', 5: 'pl_06' };      // portrait slot index -> photo id
   const DISTRICT_PHOTO = { 'the-loop': 'region_loop', 'near-north': 'region_near_north', 'south-side': 'region_south_side', riverfront: 'region_riverfront', 'west-side': 'region_west_side' };
-  const ITEM_PHOTO = { revolver: 'item_colt_police_positive', shotgun: 'item_winchester_1897', pistol: 'item_colt_m1911' };
-  const ITEM_ALT = { revolver: 'A blued Colt double-action revolver on dark felt', shotgun: 'A pump-action Winchester shotgun with a walnut stock on dark felt', pistol: 'A Colt 1911 pistol with checkered walnut grips on dark felt' };
+  const ITEM_PHOTO = { revolver: 'item_colt_police_positive', shotgun: 'item_winchester_1897', pistol: 'item_colt_m1911', officialpolice: 'item_colt_official_police', mp38: 'item_sw_38_military_police' };
+  const ITEM_ALT = { officialpolice: 'A blued Colt Official Police revolver with black grips on dark felt', mp38: 'A blued Smith & Wesson Military & Police revolver with walnut grips on dark felt', revolver: 'A blued Colt double-action revolver on dark felt', shotgun: 'A pump-action Winchester shotgun with a walnut stock on dark felt', pistol: 'A Colt 1911 pistol with checkered walnut grips on dark felt' };
   const fallbacks = {};
   const attr = (s) => String(s).replace(/"/g, '&quot;');
   function photo(id, o) {
