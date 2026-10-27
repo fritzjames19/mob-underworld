@@ -3723,7 +3723,7 @@ const ART = (function () {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) cloudRefresh(); });
 
   /* ---------- crews (online only) ---------- */
-  const crewUi = { data: null, browse: null, loading: false, err: '', ask: null, loadedFor: null };
+  const crewUi = { at: 0, data: null, browse: null, loading: false, err: '', ask: null, loadedFor: null };
   const ROLE_NAME = { member: 'Member', recruiter: 'Recruiter', officer: 'Officer', leader: 'Leader' };
   const ROLE_ORD = { member: 1, recruiter: 2, officer: 3, leader: 4 };
   async function loadCrew(quiet) {
@@ -3733,7 +3733,7 @@ const ART = (function () {
       const st = await rpc('game_crew_state');
       crewUi.data = st.ok ? st : null; crewUi.err = st.ok ? '' : (st.error || 'Could not load your crew.');
       crewUi.browse = (st.ok && !st.crew) ? (await rpc('game_crew_browse')).crews || [] : null;
-      crewUi.loadedFor = cloud.session && cloud.session.email;
+      crewUi.loadedFor = cloud.session && cloud.session.email; crewUi.at = Date.now();
     } catch (e) {
       if (e.signedOut) { showAuth(friendly(e)); return; }
       crewUi.err = (e.status === 404 || /could not find|function/i.test(e.message || '')) ? 'Crews need the latest database update (migration 0007). Ask whoever runs the game to install it.' : friendly(e);
@@ -3805,13 +3805,32 @@ const ART = (function () {
       (me.can_recruit ? '<textarea id="crew-desc-edit" class="inp" maxlength="300" rows="2" placeholder="New description">' + esc(c.description || '') + '</textarea><div><button class="btn sm ghost" data-act="crew-update">Save description</button></div>' : '') +
       '<div style="display:flex;gap:8px;flex-wrap:wrap">' + (me.is_leader ? askRow('disband', '', 'Disband crew') : askRow('leave', '', 'Leave crew')) + '</div>' +
       (me.is_leader ? '<p style="color:var(--muted);font-size:12.5px">Leaders must hand over the crew (or empty the treasury and disband) before leaving.</p>' : ''));
+    const left = (ms) => { const m = Math.max(0, Math.round((ms - Date.now()) / 60000)); return m >= 1440 ? Math.floor(m / 1440) + 'd ' + Math.floor((m % 1440) / 60) + 'h left' : m >= 60 ? Math.floor(m / 60) + 'h ' + (m % 60) + 'm left' : m + 'm left'; };
+    const k = d.contract, nMem = d.members.length, canTake = me.can_kick;
+    let contracts;
+    if (k) {
+      const pct = Math.min(100, Math.round((k.progress / k.target) * 100));
+      contracts = crewCard('<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3 style="font-size:20px">' + esc(k.title) + '</h3><span class="chip gold">Pays ' + money(Number(k.reward_minor)) + ' to the treasury</span></div>' +
+        '<p style="color:var(--muted);font-size:13.5px">' + esc(k.description) + '</p>' +
+        '<div role="progressbar" aria-valuemin="0" aria-valuemax="' + k.target + '" aria-valuenow="' + k.progress + '" style="height:14px;background:var(--bg);border:1px solid var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:var(--gold)"></div></div>' +
+        '<div style="display:flex;justify-content:space-between;color:var(--muted);font-size:13px"><span><b class="num" style="color:var(--text)">' + k.progress + ' / ' + k.target + '</b> jobs</span><span>' + left(k.expires_at) + '</span></div>' +
+        '<p style="color:var(--muted);font-size:12.5px">Every successful job any member finishes counts once. You keep your own rewards as usual. Started by ' + esc(k.started_by) + '.</p>' +
+        (k.contributions.length ? '<div class="bonus-list">' + k.contributions.map((c) => '<span class="bonus">' + esc(c.name) + ' · ' + c.count + '</span>').join('') + '</div>' : '') +
+        (canTake ? '<div>' + askRow('cabandon', '', 'Drop contract') + '</div>' : ''));
+    } else {
+      contracts = d.catalog.map((c) => crewCard('<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3 style="font-size:19px">' + esc(c.title) + '</h3><span class="chip gold">' + money(Number(c.reward_minor)) + '</span></div><p style="color:var(--muted);font-size:13.5px">' + esc(c.description) + '</p>' +
+        '<span style="color:var(--muted);font-size:13px">' + c.target + ' jobs in ' + c.days + ' days' + (c.min_members > 1 ? ' · needs ' + c.min_members + ' members' : '') + '</span>' +
+        '<div>' + (!canTake ? '<button class="btn sm ghost" disabled>Officers and the leader start these</button>' : nMem < c.min_members ? '<button class="btn sm ghost" disabled>Needs ' + c.min_members + ' members</button>' : '<button class="btn sm" data-act="crew-contract-start" data-id="' + esc(c.id) + '">Take this contract</button>') + '</div>')).join('');
+    }
+    contracts += '<p style="color:var(--muted);font-size:13px">Contracts completed: <b class="num" style="color:var(--text)">' + d.contracts_done + '</b></p>' +
+      (d.history.length ? '<div class="table-wrap"><table class="rank" style="min-width:0"><tbody>' + d.history.map((h) => '<tr data-pg="item"><td style="width:90px;color:var(--muted)">' + ago(h.at) + '</td><td>' + esc(h.title) + '</td><td style="text-align:right;color:' + (h.status === 'completed' ? 'var(--gold)' : 'var(--muted)') + '">' + (h.status === 'completed' ? 'Done' : h.status === 'expired' ? 'Ran out (' + h.progress + '/' + h.target + ')' : 'Dropped (' + h.progress + '/' + h.target + ')') + '</td></tr>').join('') + '</tbody></table></div>' : '');
     const nReq = (d.requests || []).length;
-    const tabs = [['members', 'Members'], ['requests', 'Requests' + (nReq ? ' ' + nReq : '')], ['treasury', 'Treasury'], ['feed', 'Feed'], ['about', 'About']];
+    const tabs = [['members', 'Members'], ['requests', 'Requests' + (nReq ? ' ' + nReq : '')], ['contracts', 'Contracts'], ['treasury', 'Treasury'], ['feed', 'Feed'], ['about', 'About']];
     const sub = curSub('crew', 'members');
-    const sections = { members: mem, requests: (me.can_recruit ? invite + (reqs || '<p style="color:var(--muted)">No requests waiting.</p>') : '<p style="color:var(--muted)">Only recruiters and officers see requests.</p>'), treasury, feed, about };
+    const sections = { contracts, members: mem, requests: (me.can_recruit ? invite + (reqs || '<p style="color:var(--muted)">No requests waiting.</p>') : '<p style="color:var(--muted)">Only recruiters and officers see requests.</p>'), treasury, feed, about };
     if (isPhone()) return subTabs('crew', tabs) + sections[sub];
-    const T = { members: 'Members', requests: 'Requests', treasury: 'Treasury', feed: 'Feed', about: 'About the crew' };
-    return ['members', 'requests', 'treasury', 'feed', 'about'].map((k) => '<h2 class="sec-title">' + T[k] + '</h2>' + (k === 'members' ? '<div class="grid g3">' + sections[k] + '</div>' : k === 'requests' ? '<div class="grid g3">' + sections[k] + '</div>' : sections[k])).join('');
+    const T = { members: 'Members', requests: 'Requests', contracts: 'Contracts', treasury: 'Treasury', feed: 'Feed', about: 'About the crew' };
+    return ['members', 'requests', 'contracts', 'treasury', 'feed', 'about'].map((k) => '<h2 class="sec-title">' + T[k] + '</h2>' + (k === 'members' ? '<div class="grid g3">' + sections[k] + '</div>' : k === 'requests' || k === 'contracts' ? '<div class="grid g3">' + sections[k] + '</div>' : sections[k])).join('');
   }
   function pageCrew() {
     if (!cloud.on) {
@@ -3819,6 +3838,7 @@ const ART = (function () {
         (CLOUD_ENABLED ? '<div><button class="btn" data-act="go-online">Go online</button></div>' : '<p style="color:var(--muted)">This offline copy has no online mode.</p>') + '</section>';
     }
     if (crewUi.loadedFor !== (cloud.session && cloud.session.email) && !crewUi.loading) setTimeout(() => loadCrew(), 0);
+    else if (Date.now() - crewUi.at > 20000 && !crewUi.loading && !cloud.busy) setTimeout(() => loadCrew(true), 0);
     const h = head('The Outfit', crewUi.data && crewUi.data.crew ? crewUi.data.crew.name : 'Crew', 'A crew is a few players working together with a shared purse.');
     if (crewUi.err) return h + '<section class="card" style="padding:18px"><p>' + esc(crewUi.err) + '</p><button class="btn sm" data-act="crew-reload">Try again</button></section>';
     if (!crewUi.data) return h + '<p style="color:var(--muted)">Loading your crew…</p>';
@@ -3840,6 +3860,8 @@ const ART = (function () {
     else if (a === 'crew-transfer-yes') crewCall('game_crew_transfer', { p_player_id: id }, 'You handed over the crew.');
     else if (a === 'crew-leave-yes') crewCall('game_crew_leave', {}, 'You left the crew.');
     else if (a === 'crew-disband-yes') crewCall('game_crew_disband', {}, 'Crew disbanded.');
+    else if (a === 'crew-contract-start') crewCall('game_crew_contract_start', { p_def_id: id }, 'Contract taken. Every successful job now counts.');
+    else if (a === 'crew-cabandon-yes') crewCall('game_crew_contract_abandon', {}, 'Contract dropped.');
     else if (a === 'crew-update') crewCall('game_crew_update', { p_description: valOf('crew-desc-edit') }, 'Description saved.');
     else if (a === 'crew-deposit' || a === 'crew-withdraw') {
       const m = dollarsToMinor(valOf('crew-amt')); if (!m) { toast('Enter an amount in dollars.', 'error'); return; }
