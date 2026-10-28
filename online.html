@@ -2405,6 +2405,7 @@ const ART = (function () {
     { id: 'shop', label: 'Equipment Shop', icon: 'bag' },
     { id: 'businesses', label: 'Businesses', icon: 'dollar' },
     { id: 'crew', label: 'Crew', icon: 'shield' },
+    { id: 'titles', label: 'Titles', icon: 'award' },
     { id: 'rankings', label: 'Rankings', icon: 'trophy' },
     { id: 'profile', label: 'Profile', icon: 'user' },
     { id: 'settings', label: 'Settings', icon: 'sliders', hidden: true },
@@ -3144,7 +3145,7 @@ const ART = (function () {
     syncModalHistory();
     const root = $('#modal-root');
     if (!ui.modal) { root.innerHTML = ''; lastModalKey = null; return; }
-    const html = ui.modal.type === 'mission' ? missionModal() : ui.modal.type === 'item' ? itemModal() : ui.modal.type === 'profile' ? profileModal() : ui.modal.type === 'player' ? playerModal() : ui.modal.type === 'fight' ? fightModal() : resetModal();
+    const html = ui.modal.type === 'mission' ? missionModal() : ui.modal.type === 'item' ? itemModal() : ui.modal.type === 'profile' ? profileModal() : ui.modal.type === 'player' ? playerModal() : ui.modal.type === 'titlerec' ? titleRecModal() : ui.modal.type === 'fight' ? fightModal() : resetModal();
     const key = modalKey();
     const prevScroll = root.querySelector('.modal') ? root.querySelector('.modal').scrollTop : 0;
     root.innerHTML = html;
@@ -3157,7 +3158,7 @@ const ART = (function () {
   }
 
   /* ---------- render ---------- */
-  const PAGES = { dashboard: pageDashboard, jobs: pageJobs, city: pageCity, inventory: pageInventory, shop: pageShop, businesses: pageBusinesses, crew: pageCrew, rankings: pageRankings, profile: pageProfile, settings: pageSettings };
+  const PAGES = { dashboard: pageDashboard, jobs: pageJobs, city: pageCity, inventory: pageInventory, shop: pageShop, businesses: pageBusinesses, crew: pageCrew, titles: pageTitles, rankings: pageRankings, profile: pageProfile, settings: pageSettings };
   function render() {
     renderSidebar(); renderTopbar(); renderTabbar();
     const view = $('#view');
@@ -3168,7 +3169,7 @@ const ART = (function () {
     applyPaging();
     renderModal();
     animateBars();
-    const names = { dashboard: 'Dashboard', jobs: 'Job Board', city: 'City', inventory: 'Inventory', shop: 'Equipment Shop', businesses: 'Businesses', crew: 'Crew', rankings: 'Rankings', profile: 'Profile', settings: 'Settings' };
+    const names = { dashboard: 'Dashboard', jobs: 'Job Board', city: 'City', inventory: 'Inventory', shop: 'Equipment Shop', businesses: 'Businesses', crew: 'Crew', titles: 'Titles', rankings: 'Rankings', profile: 'Profile', settings: 'Settings' };
     document.title = names[ui.route] + ' · MOB: The Underworld';
   }
 
@@ -3789,7 +3790,7 @@ const ART = (function () {
         acts += ['member', 'recruiter', 'officer'].filter((r) => r !== m.role).map((r) => '<button class="btn sm ghost" data-act="crew-role" data-id="' + m.id + '" data-role="' + r + '">Make ' + ROLE_NAME[r] + '</button>').join('') + askRow('transfer', m.id, 'Hand over lead');
       }
       if (!isMe && me.can_kick && lower) acts += askRow('kick', m.id, 'Remove');
-      return '<article data-pg="item" class="card" style="padding:12px;display:grid;gap:8px"><div class="pl" data-act="open-player" data-id="' + esc(m.id) + '" style="display:flex;gap:10px;align-items:center;cursor:pointer">' + portrait(m.portrait, 40) + '<div style="min-width:0"><b>' + esc(m.name) + (isMe ? ' (you)' : '') + '</b><div style="color:var(--muted);font-size:13px">' + esc(m.rank) + '</div></div><span class="chip' + (m.role === 'leader' ? ' gold' : '') + '" style="margin-left:auto">' + ROLE_NAME[m.role] + '</span></div>' + (acts ? '<div style="display:flex;gap:6px;flex-wrap:wrap">' + acts + '</div>' : '') + '</article>';
+      return '<article data-pg="item" class="card" style="padding:12px;display:grid;gap:8px"><div class="pl" data-act="open-player" data-id="' + esc(m.id) + '" style="display:flex;gap:10px;align-items:center;cursor:pointer">' + portrait(m.portrait, 40) + '<div style="min-width:0"><b>' + esc(m.name) + (isMe ? ' (you)' : '') + '</b><div style="color:var(--muted);font-size:13px">' + esc(m.rank) + (m.title ? ' · <span style="color:var(--gold)">' + esc(m.title) + '</span>' : '') + '</div></div><span class="chip' + (m.role === 'leader' ? ' gold' : '') + '" style="margin-left:auto">' + ROLE_NAME[m.role] + '</span></div>' + (acts ? '<div style="display:flex;gap:6px;flex-wrap:wrap">' + acts + '</div>' : '') + '</article>';
     }).join('');
     const reqs = (d.requests || []).map((r) => crewCard('<b>' + esc(r.name) + '</b><span style="color:var(--muted)">' + (r.kind === 'application' ? 'Wants to join' : 'Invited by ' + esc(r.by)) + '</span><div style="display:flex;gap:8px;flex-wrap:wrap">' +
       (r.kind === 'application' ? '<button class="btn sm" data-act="crew-respond" data-id="' + r.id + '" data-yes="1">Accept</button><button class="btn sm ghost" data-act="crew-respond" data-id="' + r.id + '" data-yes="0">Decline</button>' : '') +
@@ -3887,7 +3888,7 @@ const ART = (function () {
     return head('The Outfit\'s ledger', 'Rankings', sub) +
       '<div class="filters" role="tablist" aria-label="Sort rankings">' + tabs.map((t) => '<button class="filter" role="tab" data-act="sort" data-k="' + t[0] + '" aria-selected="' + (ui.sort === t[0]) + '">Sort by ' + t[1] + '</button>').join('') + '</div>' +
       (rows ? '<div class="table-wrap"><table class="rank"><thead><tr><th>#</th><th>Player</th><th>Rank</th>' + th('xp', 'XP') + th('respect', 'Respect') + th('networth', 'Net worth') + '</tr></thead><tbody>' +
-        rows.map((r) => '<tr data-pg="item" data-act="open-player" data-id="' + esc(r.id) + '" style="cursor:pointer" class="' + (r.is_you ? 'you' : '') + '"><td class="pos">' + r.position + '</td><td><div class="pl">' + portrait(r.portrait, 42) + '<div><b>' + esc(r.name) + '</b><div>' + (r.is_you ? '<span class="chip gold">You</span> ' : '') + (r.crew ? '<span class="chip">' + esc(r.crew) + '</span>' : '') + '</div></div></div></td>' +
+        rows.map((r) => '<tr data-pg="item" data-act="open-player" data-id="' + esc(r.id) + '" style="cursor:pointer" class="' + (r.is_you ? 'you' : '') + '"><td class="pos">' + r.position + '</td><td><div class="pl">' + portrait(r.portrait, 42) + '<div><b>' + esc(r.name) + '</b>' + (r.title ? '<div style="color:var(--gold);font-size:12.5px">' + esc(r.title) + '</div>' : '') + '<div>' + (r.is_you ? '<span class="chip gold">You</span> ' : '') + (r.crew ? '<span class="chip">' + esc(r.crew) + '</span>' : '') + '</div></div></div></td>' +
           '<td>' + esc(r.rank) + '</td><td class="' + (ui.sort === 'xp' ? 'sorted' : '') + '">' + MOB.fmtNum(r.xp) + '</td><td class="' + (ui.sort === 'respect' ? 'sorted' : '') + '">' + MOB.fmtNum(r.respect) + '</td><td class="' + (ui.sort === 'networth' ? 'sorted' : '') + '">' + money(Number(r.networth_minor)) + '</td></tr>').join('') + '</tbody></table></div>' : '');
   }
 
@@ -3902,11 +3903,11 @@ const ART = (function () {
       const rate = d.jobs ? Math.round((d.jobs_won / d.jobs) * 100) + '%' : 'No jobs yet';
       const mine = crewUi.data && crewUi.data.crew && crewUi.data.me && crewUi.data.me.can_recruit;
       const canInvite = mine && !d.crew && !d.is_you;
-      body = '<div style="display:flex;gap:14px;align-items:center"><div style="width:96px;height:96px;flex:none;overflow:hidden;border:2px solid var(--gold);border-radius:3px">' + portrait(d.portrait, 96).replace('<img ', '<img style="width:96px;height:96px;object-fit:cover" ') + '</div><div style="min-width:0"><div class="pc-meta"><span class="chip gold">' + esc(d.rank) + '</span>' + (d.is_you ? '<span class="chip">You</span>' : '') + (d.crew ? '<span class="chip">' + esc(d.crew) + ' · ' + (ROLE_NAME[d.crew_role] || '') + '</span>' : '<span class="chip">No crew</span>') + '</div></div></div>' +
+      body = '<div style="display:flex;gap:14px;align-items:center"><div style="width:96px;height:96px;flex:none;overflow:hidden;border:2px solid var(--gold);border-radius:3px">' + portrait(d.portrait, 96).replace('<img ', '<img style="width:96px;height:96px;object-fit:cover" ') + '</div><div style="min-width:0">' + (d.title ? '<div style="color:var(--gold);font-family:var(--font-head);font-size:18px;margin-bottom:4px">' + esc(d.title) + '</div>' : '') + '<div class="pc-meta"><span class="chip gold">' + esc(d.rank) + '</span>' + (d.is_you ? '<span class="chip">You</span>' : '') + (d.crew ? '<span class="chip">' + esc(d.crew) + ' · ' + (ROLE_NAME[d.crew_role] || '') + '</span>' : '<span class="chip">No crew</span>') + '</div></div></div>' +
         '<div class="facts" style="margin-top:12px"><div><small>Experience</small><b class="num">' + MOB.fmtNum(d.xp) + '</b></div><div><small>Respect</small><b class="num">' + MOB.fmtNum(d.respect) + '</b></div>' +
         '<div><small>Net worth</small><b class="num" style="color:var(--gold)">' + money(Number(d.networth_minor)) + '</b></div><div><small>Jobs done</small><b class="num">' + d.jobs + '</b></div>' +
         '<div><small>Success rate</small><b class="num">' + rate + '</b></div><div><small>In the city since</small><b>' + new Date(d.joined_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) + '</b></div></div>' +
-        (canInvite ? '<div style="margin-top:12px"><button class="btn" data-act="player-invite" data-name="' + esc(d.name) + '">Invite to ' + esc(crewUi.data.crew.name) + '</button></div>' : '');
+        ((d.titles || []).length ? '<div class="bonus-list" style="margin-top:12px">' + d.titles.map((x) => '<span class="bonus">' + esc(x.name) + ' #' + x.serial + '</span>').join('') + '</div>' : '') + ((d.titles || []).length ? '<div class="bonus-list" style="margin-top:12px">' + d.titles.map((x) => '<span class="bonus">' + esc(x.name) + ' #' + x.serial + '</span>').join('') + '</div>' : '') + (canInvite ? '<div style="margin-top:12px"><button class="btn" data-act="player-invite" data-name="' + esc(d.name) + '">Invite to ' + esc(crewUi.data.crew.name) + '</button></div>' : '');
     }
     return '<div class="modal-back" data-act="backdrop"><div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="im-title" tabindex="-1">' + head2 + '<div class="modal-body">' + body + '</div></div></div>';
   }
@@ -3922,6 +3923,96 @@ const ART = (function () {
     } catch (er) {
       if (er.signedOut) { showAuth(friendly(er)); return; }
       if (ui.modal && ui.modal.type === 'player') { ui.modal.err = er.status === 404 ? 'Profiles need the latest database update (migration 0010). Ask whoever runs the game to install it.' : friendly(er); render(); }
+    }
+  });
+
+  /* ---------- titles (online only) ---------- */
+  const titleUi = { data: null, at: 0, loading: false, err: '', loadedFor: null };
+  const RAR_CHIP = { common: '', rare: ' gold', epic: ' gold', legendary: ' gold' };
+  async function loadTitles(quiet) {
+    if (!cloud.on) return;
+    if (!quiet) { titleUi.loading = true; render(); }
+    try { const r = await rpc('game_titles'); titleUi.data = r.ok ? r : null; titleUi.err = r.ok ? '' : (r.error || 'Could not load titles.'); titleUi.at = Date.now(); titleUi.loadedFor = cloud.session && cloud.session.email; }
+    catch (e) {
+      if (e.signedOut) { showAuth(friendly(e)); return; }
+      titleUi.err = (e.status === 404 || /could not find|function/i.test(e.message || '')) ? 'Titles need the latest database update (migration 0013). Ask whoever runs the game to install it.' : friendly(e);
+    } finally { titleUi.loading = false; if (ui.route === 'titles') render(); }
+  }
+  async function titleCall(fn, args, okMsg) {
+    if (cloud.busy) return;
+    cloud.busy = true; document.body.classList.add('busy');
+    try {
+      const r = await rpc(fn, Object.assign({ p_key: newKey() }, args));
+      if (!r || !r.ok) toast((r && r.error) || 'That did not work.', 'error'); else toast(okMsg(r), 'success');
+      rankUi.at = 0; crewUi.at = 0;
+      await loadTitles(true);
+    } catch (e) { if (e.signedOut) showAuth(friendly(e)); else toast(friendly(e), 'error'); }
+    finally { cloud.busy = false; document.body.classList.remove('busy'); render(); }
+  }
+  const supplyText = (t) => (t.max_supply ? t.taken + ' of ' + t.max_supply + ' claimed' : t.taken + ' awarded');
+  function titleCard(t) {
+    const own = t.owned, pct = t.cmp === 'gte' ? Math.min(100, Math.round((Number(t.current) / Number(t.target)) * 100)) : (t.eligible ? 100 : 0);
+    const isOn = own && titleUi.data.active === own.id;
+    const fmt = (v) => (t.id === 'deep-pockets' ? money(Number(v)) : MOB.fmtNum(Number(v)));
+    const prog = t.cmp === 'gte' ? fmt(Math.min(Number(t.current), Number(t.target))) + ' / ' + fmt(t.target) : 'Your account is number ' + MOB.fmtNum(Number(t.current)) + ' (first ' + t.target + ' qualify)';
+    return '<article data-pg="item" class="card" style="padding:14px;display:grid;gap:8px;align-content:start' + (own ? ';border-color:var(--gold)' : '') + '">' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3 style="font-size:19px">' + esc(t.name) + '</h3><span class="chip' + RAR_CHIP[t.rarity] + '">' + esc(t.rarity) + '</span></div>' +
+      '<p style="color:var(--muted);font-size:13.5px">' + esc(t.description) + '</p>' +
+      '<div style="font-size:13px"><b>' + esc(t.requirement) + '</b></div>' +
+      (own ? '<div class="chip gold" style="justify-self:start">Serial #' + own.serial + (t.max_supply ? ' of ' + t.max_supply : '') + '</div>' :
+        '<div role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '" style="height:10px;background:var(--bg);border:1px solid var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:var(--gold)"></div></div><div style="color:var(--muted);font-size:12.5px">' + esc(prog) + '</div>') +
+      '<div style="color:var(--muted);font-size:12.5px">' + supplyText(t) + '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      (own ? (isOn ? '<button class="btn sm ghost" data-act="title-unequip">Wearing it · Take off</button>' : '<button class="btn sm" data-act="title-equip" data-id="' + own.id + '">Wear this title</button>') + '<button class="btn sm ghost" data-act="title-record" data-id="' + own.id + '">View record</button>'
+        : t.eligible ? '<button class="btn sm" data-act="title-claim" data-id="' + esc(t.id) + '">Claim it</button>' : '<button class="btn sm ghost" disabled>Not yet earned</button>') + '</div></article>';
+  }
+  function pageTitles() {
+    if (!cloud.on) {
+      return head('Honours', 'Titles', 'Earned titles live on the server.') + '<section class="card" style="padding:20px;display:grid;gap:10px"><h3 style="font-size:22px">Sign in to earn titles</h3><p style="color:var(--muted)">Titles are recorded by the game server so nobody can fake them. Switch to your online account to see and claim yours.</p>' +
+        (CLOUD_ENABLED ? '<div><button class="btn" data-act="go-online">Go online</button></div>' : '') + '</section>';
+    }
+    if (titleUi.loadedFor !== (cloud.session && cloud.session.email) && !titleUi.loading) setTimeout(() => loadTitles(), 0);
+    else if (Date.now() - titleUi.at > 20000 && !titleUi.loading && !cloud.busy) setTimeout(() => loadTitles(true), 0);
+    const h = head('Honours', 'Titles', 'Earned by what you do in the city. Cosmetic only: no title changes how you fight or earn.');
+    if (titleUi.err) return h + '<section class="card" style="padding:18px"><p>' + esc(titleUi.err) + '</p><button class="btn sm" data-act="title-reload">Try again</button></section>';
+    if (!titleUi.data) return h + '<p style="color:var(--muted)">Loading…</p>';
+    const all = titleUi.data.titles, held = all.filter((t) => t.owned), avail = all.filter((t) => !t.owned && t.eligible), rest = all.filter((t) => !t.owned && !t.eligible);
+    const sec = (title, list) => (list.length ? '<h2 class="sec-title">' + title + ' <small>' + list.length + '</small></h2><div class="grid g3">' + list.map(titleCard).join('') + '</div>' : '');
+    if (isPhone()) {
+      const sub = curSub('titles', avail.length ? 'ready' : 'held'), tabs = [['held', 'Held ' + held.length], ['ready', 'Ready' + (avail.length ? ' ' + avail.length : '')], ['locked', 'To earn ' + rest.length]];
+      const list = sub === 'held' ? held : sub === 'ready' ? avail : rest;
+      return h + subTabs('titles', tabs) + (list.length ? list.map(titleCard).join('') : '<p style="color:var(--muted)">Nothing here yet.</p>');
+    }
+    return h + sec('Ready to claim', avail) + sec('Held', held) + sec('Still to earn', rest);
+  }
+  function titleRecModal() {
+    const m = ui.modal, d = m.data;
+    const headH = '<div class="modal-head"><div><div class="eyebrow">Title record</div><h2 id="im-title">' + (d ? esc(d.metadata.name) : 'Record') + '</h2></div><button class="icon-btn" data-act="close-modal" aria-label="Close">' + icon('x', 18) + '</button></div>';
+    let body;
+    if (m.err) body = '<p>' + esc(m.err) + '</p>';
+    else if (!d) body = '<p style="color:var(--muted)">Pulling the record…</p>';
+    else {
+      const at = d.metadata.attributes.map((a) => '<div><small>' + esc(a.trait_type) + '</small><b>' + esc(a.value) + '</b></div>').join('');
+      body = '<p style="font-family:var(--font-head);font-size:18px;color:#e6dcc3;line-height:1.4">' + esc(d.metadata.description) + '</p>' +
+        '<div class="facts" style="margin-top:6px">' + at + '<div><small>Held by</small><b>' + esc(d.owner || 'Account closed') + '</b></div><div><small>Awarded</small><b>' + new Date(d.awarded_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) + '</b></div></div>' +
+        '<p style="color:var(--muted);font-size:12.5px;margin-top:10px">This record lives on the game server. It is not on any blockchain and has no money value. It is shaped like standard NFT metadata so it could be minted later. Artwork is not made yet.</p>' +
+        '<details style="margin-top:8px"><summary style="cursor:pointer">Show the raw record</summary><pre style="white-space:pre-wrap;word-break:break-word;font-size:12px;background:var(--bg);padding:10px;border:1px solid var(--line);border-radius:3px;margin-top:6px">' + esc(JSON.stringify(d.metadata, null, 2)) + '</pre></details>' +
+        '<div style="margin-top:10px"><button class="btn sm ghost" data-act="title-copy">Copy record</button></div>';
+    }
+    return '<div class="modal-back" data-act="backdrop"><div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="im-title" tabindex="-1">' + headH + '<div class="modal-body">' + body + '</div></div></div>';
+  }
+  document.addEventListener('click', async (e) => {
+    const t = e.target.closest('[data-act^="title-"]'); if (!t || !cloud.on) return;
+    const a = t.dataset.act, id = t.dataset.id;
+    if (a === 'title-reload') { titleUi.err = ''; loadTitles(); }
+    else if (a === 'title-claim') titleCall('game_title_claim', { p_def_id: id }, (r) => 'Title claimed: ' + r.name + ' #' + r.serial + '.');
+    else if (a === 'title-equip') titleCall('game_title_equip', { p_title_id: id }, () => 'Title equipped.');
+    else if (a === 'title-unequip') titleCall('game_title_equip', { p_title_id: null }, () => 'Title taken off.');
+    else if (a === 'title-copy') { try { await navigator.clipboard.writeText(JSON.stringify(ui.modal.data.metadata, null, 2)); toast('Record copied.', 'success'); } catch (er) { toast('Could not copy. Use "Show the raw record" and copy it by hand.', 'error'); } }
+    else if (a === 'title-record') {
+      ui.modal = { type: 'titlerec', id, data: null, err: '' }; render();
+      try { const r = await rpc('game_title_record', { p_title_id: id }); if (ui.modal && ui.modal.type === 'titlerec' && ui.modal.id === id) { if (r.ok) ui.modal.data = r; else ui.modal.err = r.error || 'Record not found.'; render(); } }
+      catch (er) { if (er.signedOut) { showAuth(friendly(er)); return; } if (ui.modal && ui.modal.type === 'titlerec') { ui.modal.err = friendly(er); render(); } }
     }
   });
 
