@@ -303,6 +303,16 @@ main { padding: 26px var(--gutter) 60px; min-width: 0; max-width: 1280px; width:
 .item.unowned .art svg { opacity: .45; filter: grayscale(.6); }
 .item.equipped { border-color: var(--gold); }
 .rar-Common { color: var(--muted); } .rar-Uncommon { color: var(--good); } .rar-Rare { color: var(--steel); } .rar-Epic { color: #cf6b73; }
+
+/* glowing titles: text only, no artwork */
+.gt { font-family: var(--font-head); letter-spacing: .14em; text-transform: uppercase; font-weight: 700; color: #f3d98b; text-shadow: 0 0 6px rgba(240,200,90,.85), 0 0 16px rgba(240,180,60,.55); animation: gtpulse 3.2s ease-in-out infinite; }
+.gt.c-common { color: #d8d2c4; text-shadow: 0 0 4px rgba(220,214,196,.45); animation: none; }
+.gt.c-uncommon { color: #a9d9b4; text-shadow: 0 0 6px rgba(120,200,140,.7), 0 0 14px rgba(90,170,110,.4); }
+.gt.c-rare { color: #9fc4ee; text-shadow: 0 0 6px rgba(110,170,240,.8), 0 0 16px rgba(80,140,230,.5); }
+.gt.c-epic { color: #e79aa2; text-shadow: 0 0 7px rgba(230,100,120,.85), 0 0 18px rgba(210,70,100,.55); }
+.gt.c-legendary { color: #ffe7a0; text-shadow: 0 0 8px rgba(255,210,90,.95), 0 0 22px rgba(255,170,40,.75), 0 0 40px rgba(255,140,20,.4); }
+@keyframes gtpulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.28); } }
+@media (prefers-reduced-motion: reduce) { .gt { animation: none; } }
 .bonus-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .bonus { display: inline-flex; gap: 5px; align-items: center; padding: 2px 8px; font-size: 12px; border: 1px solid rgba(122,163,131,.4); color: var(--good); border-radius: 2px; }
 .shop-front { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 3px; min-height: 150px; display: flex; align-items: flex-end; margin-bottom: 22px; isolation: isolate; }
@@ -2679,7 +2689,7 @@ const ART = (function () {
 
     const card =
       '<section class="card deco player-card" aria-label="Player status"><div class="pc-top"><div class="frame">' + portrait(p.portrait, 96) + '</div><div style="min-width:0">' +
-      '<h2 class="pc-name">' + esc(p.name) + '</h2><div class="pc-meta"><span class="chip demo">Demo character</span><span class="chip gold">' + esc(pr.cur.name) + '</span><span class="chip num">' + MOB.fmtNum(p.xp) + ' XP</span></div></div></div>' +
+      '<h2 class="pc-name">' + esc(p.name) + '</h2>' + myTitle() + '<div class="pc-meta"><span class="chip demo">Demo character</span><span class="chip gold">' + esc(pr.cur.name) + '</span><span class="chip num">' + MOB.fmtNum(p.xp) + ' XP</span></div></div></div>' +
       meter('hp', 'Health', 'heart', p.health, eff.maxHealth, 'hp', MOB.healthState(p.health)) +
       meter('en', 'Energy', 'bolt', p.energy, eff.maxEnergy, 'en', '+1 per 5 min') +
       meter('ht', 'Heat', 'flame', p.heat, MOB.CONFIG.maxHeat, 'heat', MOB.heatBand(p.heat)) +
@@ -2807,7 +2817,7 @@ const ART = (function () {
     const flags = Object.keys(S.flags);
     const ledger = S.ledger.slice(0, 8);
     return bannerHead('bg_dossier_desk', 'A detective\'s desk with case folders, photographs, a fountain pen and a black telephone', 'Dossier', 'Profile', null) +
-      '<section class="card deco profile-head"><div class="frame">' + portrait(p.portrait, 150) + '</div><div style="min-width:0"><h2 class="pc-name" style="font-size:34px">' + esc(p.name) + '</h2>' +
+      '<section class="card deco profile-head"><div class="frame">' + portrait(p.portrait, 150) + '</div><div style="min-width:0"><h2 class="pc-name" style="font-size:34px">' + esc(p.name) + '</h2>' + myTitle() + '' +
       '<div class="pc-meta"><span class="chip demo">Demo character</span><span class="chip gold">' + esc(pr.cur.name) + '</span><span class="chip">' + MOB.healthState(p.health) + '</span><span class="chip">' + MOB.heatBand(p.heat) + ' heat</span></div></div>' +
       '<button class="btn ghost" data-act="edit-profile">Edit Profile</button></section>' +
       '<div class="grid g4" style="margin-top:16px">' +
@@ -3790,7 +3800,7 @@ const ART = (function () {
         acts += ['member', 'recruiter', 'officer'].filter((r) => r !== m.role).map((r) => '<button class="btn sm ghost" data-act="crew-role" data-id="' + m.id + '" data-role="' + r + '">Make ' + ROLE_NAME[r] + '</button>').join('') + askRow('transfer', m.id, 'Hand over lead');
       }
       if (!isMe && me.can_kick && lower) acts += askRow('kick', m.id, 'Remove');
-      return '<article data-pg="item" class="card" style="padding:12px;display:grid;gap:8px"><div class="pl" data-act="open-player" data-id="' + esc(m.id) + '" style="display:flex;gap:10px;align-items:center;cursor:pointer">' + portrait(m.portrait, 40) + '<div style="min-width:0"><b>' + esc(m.name) + (isMe ? ' (you)' : '') + '</b><div style="color:var(--muted);font-size:13px">' + esc(m.rank) + (m.title ? ' · <span style="color:var(--gold)">' + esc(m.title) + '</span>' : '') + '</div></div><span class="chip' + (m.role === 'leader' ? ' gold' : '') + '" style="margin-left:auto">' + ROLE_NAME[m.role] + '</span></div>' + (acts ? '<div style="display:flex;gap:6px;flex-wrap:wrap">' + acts + '</div>' : '') + '</article>';
+      return '<article data-pg="item" class="card" style="padding:12px;display:grid;gap:8px"><div class="pl" data-act="open-player" data-id="' + esc(m.id) + '" style="display:flex;gap:10px;align-items:center;cursor:pointer">' + portrait(m.portrait, 40) + '<div style="min-width:0"><b>' + esc(m.name) + (isMe ? ' (you)' : '') + '</b><div style="color:var(--muted);font-size:13px">' + esc(m.rank) + (m.title ? ' · ' + glowTitle(m.title) : '') + '</div></div><span class="chip' + (m.role === 'leader' ? ' gold' : '') + '" style="margin-left:auto">' + ROLE_NAME[m.role] + '</span></div>' + (acts ? '<div style="display:flex;gap:6px;flex-wrap:wrap">' + acts + '</div>' : '') + '</article>';
     }).join('');
     const reqs = (d.requests || []).map((r) => crewCard('<b>' + esc(r.name) + '</b><span style="color:var(--muted)">' + (r.kind === 'application' ? 'Wants to join' : 'Invited by ' + esc(r.by)) + '</span><div style="display:flex;gap:8px;flex-wrap:wrap">' +
       (r.kind === 'application' ? '<button class="btn sm" data-act="crew-respond" data-id="' + r.id + '" data-yes="1">Accept</button><button class="btn sm ghost" data-act="crew-respond" data-id="' + r.id + '" data-yes="0">Decline</button>' : '') +
@@ -3888,7 +3898,7 @@ const ART = (function () {
     return head('The Outfit\'s ledger', 'Rankings', sub) +
       '<div class="filters" role="tablist" aria-label="Sort rankings">' + tabs.map((t) => '<button class="filter" role="tab" data-act="sort" data-k="' + t[0] + '" aria-selected="' + (ui.sort === t[0]) + '">Sort by ' + t[1] + '</button>').join('') + '</div>' +
       (rows ? '<div class="table-wrap"><table class="rank"><thead><tr><th>#</th><th>Player</th><th>Rank</th>' + th('xp', 'XP') + th('respect', 'Respect') + th('networth', 'Net worth') + '</tr></thead><tbody>' +
-        rows.map((r) => '<tr data-pg="item" data-act="open-player" data-id="' + esc(r.id) + '" style="cursor:pointer" class="' + (r.is_you ? 'you' : '') + '"><td class="pos">' + r.position + '</td><td><div class="pl">' + portrait(r.portrait, 42) + '<div><b>' + esc(r.name) + '</b>' + (r.title ? '<div style="color:var(--gold);font-size:12.5px">' + esc(r.title) + '</div>' : '') + '<div>' + (r.is_you ? '<span class="chip gold">You</span> ' : '') + (r.crew ? '<span class="chip">' + esc(r.crew) + '</span>' : '') + '</div></div></div></td>' +
+        rows.map((r) => '<tr data-pg="item" data-act="open-player" data-id="' + esc(r.id) + '" style="cursor:pointer" class="' + (r.is_you ? 'you' : '') + '"><td class="pos">' + r.position + '</td><td><div class="pl">' + portrait(r.portrait, 42) + '<div><b>' + esc(r.name) + '</b>' + (r.title ? '<div style="font-size:12.5px">' + glowTitle(r.title) + '</div>' : '') + '<div>' + (r.is_you ? '<span class="chip gold">You</span> ' : '') + (r.crew ? '<span class="chip">' + esc(r.crew) + '</span>' : '') + '</div></div></div></td>' +
           '<td>' + esc(r.rank) + '</td><td class="' + (ui.sort === 'xp' ? 'sorted' : '') + '">' + MOB.fmtNum(r.xp) + '</td><td class="' + (ui.sort === 'respect' ? 'sorted' : '') + '">' + MOB.fmtNum(r.respect) + '</td><td class="' + (ui.sort === 'networth' ? 'sorted' : '') + '">' + money(Number(r.networth_minor)) + '</td></tr>').join('') + '</tbody></table></div>' : '');
   }
 
@@ -3903,11 +3913,11 @@ const ART = (function () {
       const rate = d.jobs ? Math.round((d.jobs_won / d.jobs) * 100) + '%' : 'No jobs yet';
       const mine = crewUi.data && crewUi.data.crew && crewUi.data.me && crewUi.data.me.can_recruit;
       const canInvite = mine && !d.crew && !d.is_you;
-      body = '<div style="display:flex;gap:14px;align-items:center"><div style="width:96px;height:96px;flex:none;overflow:hidden;border:2px solid var(--gold);border-radius:3px">' + portrait(d.portrait, 96).replace('<img ', '<img style="width:96px;height:96px;object-fit:cover" ') + '</div><div style="min-width:0">' + (d.title ? '<div style="color:var(--gold);font-family:var(--font-head);font-size:18px;margin-bottom:4px">' + esc(d.title) + '</div>' : '') + '<div class="pc-meta"><span class="chip gold">' + esc(d.rank) + '</span>' + (d.is_you ? '<span class="chip">You</span>' : '') + (d.crew ? '<span class="chip">' + esc(d.crew) + ' · ' + (ROLE_NAME[d.crew_role] || '') + '</span>' : '<span class="chip">No crew</span>') + '</div></div></div>' +
+      body = '<div style="display:flex;gap:14px;align-items:center"><div style="width:96px;height:96px;flex:none;overflow:hidden;border:2px solid var(--gold);border-radius:3px">' + portrait(d.portrait, 96).replace('<img ', '<img style="width:96px;height:96px;object-fit:cover" ') + '</div><div style="min-width:0">' + (d.title ? '<div style="font-size:18px;margin-bottom:4px">' + glowTitle(d.title) + '</div>' : '') + '<div class="pc-meta"><span class="chip gold">' + esc(d.rank) + '</span>' + (d.is_you ? '<span class="chip">You</span>' : '') + (d.crew ? '<span class="chip">' + esc(d.crew) + ' · ' + (ROLE_NAME[d.crew_role] || '') + '</span>' : '<span class="chip">No crew</span>') + '</div></div></div>' +
         '<div class="facts" style="margin-top:12px"><div><small>Experience</small><b class="num">' + MOB.fmtNum(d.xp) + '</b></div><div><small>Respect</small><b class="num">' + MOB.fmtNum(d.respect) + '</b></div>' +
         '<div><small>Net worth</small><b class="num" style="color:var(--gold)">' + money(Number(d.networth_minor)) + '</b></div><div><small>Jobs done</small><b class="num">' + d.jobs + '</b></div>' +
         '<div><small>Success rate</small><b class="num">' + rate + '</b></div><div><small>In the city since</small><b>' + new Date(d.joined_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) + '</b></div></div>' +
-        ((d.titles || []).length ? '<div class="bonus-list" style="margin-top:12px">' + d.titles.map((x) => '<span class="bonus">' + esc(x.name) + ' #' + x.serial + '</span>').join('') + '</div>' : '') + ((d.titles || []).length ? '<div class="bonus-list" style="margin-top:12px">' + d.titles.map((x) => '<span class="bonus">' + esc(x.name) + ' #' + x.serial + '</span>').join('') + '</div>' : '') + (canInvite ? '<div style="margin-top:12px"><button class="btn" data-act="player-invite" data-name="' + esc(d.name) + '">Invite to ' + esc(crewUi.data.crew.name) + '</button></div>' : '');
+        ((d.titles || []).length ? '<div class="bonus-list" style="margin-top:12px">' + d.titles.map((x) => '<span class="bonus" style="border-color:transparent">' + glowTitle(x.name, x.rarity) + ' #' + x.serial + '</span>').join('') + '</div>' : '') + (canInvite ? '<div style="margin-top:12px"><button class="btn" data-act="player-invite" data-name="' + esc(d.name) + '">Invite to ' + esc(crewUi.data.crew.name) + '</button></div>' : '');
     }
     return '<div class="modal-back" data-act="backdrop"><div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="im-title" tabindex="-1">' + head2 + '<div class="modal-body">' + body + '</div></div></div>';
   }
@@ -3928,6 +3938,14 @@ const ART = (function () {
 
   /* ---------- titles (online only) ---------- */
   const titleUi = { data: null, at: 0, loading: false, err: '', loadedFor: null };
+  function glowTitle(name, rarity) { return '<span class="gt' + (rarity ? ' c-' + esc(String(rarity).toLowerCase()) : '') + '">' + esc(name) + '</span>'; }
+  /* The player's own worn title as glowing text ('' offline or when none is worn). Loads the titles quietly the first time. */
+  function myTitle() {
+    if (typeof cloud === 'undefined' || !cloud.on) return '';
+    if (!titleUi.data) { if (!titleUi.loading && titleUi.loadedFor !== (cloud.session && cloud.session.email)) setTimeout(() => loadTitles(true), 0); return ''; }
+    const w = (titleUi.data.titles || []).find((x) => x.owned && x.owned.id === titleUi.data.active);
+    return w ? '<div class="my-title" style="font-size:17px;margin:2px 0 6px">' + glowTitle(w.name, w.rarity) + '</div>' : '';
+  }
   const RAR_CHIP = { common: '', rare: ' gold', epic: ' gold', legendary: ' gold' };
   async function loadTitles(quiet) {
     if (!cloud.on) return;
@@ -3956,7 +3974,7 @@ const ART = (function () {
     const fmt = (v) => (/net worth/i.test(t.requirement) ? money(Number(v)) : MOB.fmtNum(Number(v)));
     const prog = t.cmp === 'gte' ? fmt(Math.min(Number(t.current), Number(t.target))) + ' / ' + fmt(t.target) : 'Your account is number ' + MOB.fmtNum(Number(t.current)) + ' (first ' + t.target + ' qualify)';
     return '<article data-pg="item" class="card" style="padding:14px;display:grid;gap:8px;align-content:start' + (own ? ';border-color:var(--gold)' : '') + '">' +
-      '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3 style="font-size:19px">' + esc(t.name) + '</h3><span class="chip' + RAR_CHIP[t.rarity] + '">' + esc(t.rarity) + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3 style="font-size:19px">' + glowTitle(t.name, t.rarity) + '</h3><span class="chip' + RAR_CHIP[t.rarity] + '">' + esc(t.rarity) + '</span></div>' +
       '<p style="color:var(--muted);font-size:13.5px">' + esc(t.description) + '</p>' +
       '<div style="font-size:13px"><b>' + esc(t.requirement) + '</b></div>' +
       (own ? '<div class="chip gold" style="justify-self:start">Serial #' + own.serial + (t.max_supply ? ' of ' + t.max_supply : '') + '</div>' :
