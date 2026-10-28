@@ -3953,7 +3953,7 @@ const ART = (function () {
   function titleCard(t) {
     const own = t.owned, pct = t.cmp === 'gte' ? Math.min(100, Math.round((Number(t.current) / Number(t.target)) * 100)) : (t.eligible ? 100 : 0);
     const isOn = own && titleUi.data.active === own.id;
-    const fmt = (v) => (t.id === 'deep-pockets' ? money(Number(v)) : MOB.fmtNum(Number(v)));
+    const fmt = (v) => (/net worth/i.test(t.requirement) ? money(Number(v)) : MOB.fmtNum(Number(v)));
     const prog = t.cmp === 'gte' ? fmt(Math.min(Number(t.current), Number(t.target))) + ' / ' + fmt(t.target) : 'Your account is number ' + MOB.fmtNum(Number(t.current)) + ' (first ' + t.target + ' qualify)';
     return '<article data-pg="item" class="card" style="padding:14px;display:grid;gap:8px;align-content:start' + (own ? ';border-color:var(--gold)' : '') + '">' +
       '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3 style="font-size:19px">' + esc(t.name) + '</h3><span class="chip' + RAR_CHIP[t.rarity] + '">' + esc(t.rarity) + '</span></div>' +
