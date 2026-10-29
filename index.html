@@ -791,6 +791,9 @@ const MOB = (function () {
     club_owner_owed_favor: 'The club owner owes you a favor',
     inspector_investigation_known: 'You know about the inspector\'s investigation',
     informant_identity_discovered: 'You discovered the informant\'s identity',
+    frankie_stepping_back: 'Frankie is stepping back',
+    rival_ledger_seen: 'You read the rival\'s second set of books',
+    succession_vote_won: 'You won the vote for the South Side',
   };
 
   /* ---------- missions ----------
@@ -1119,10 +1122,80 @@ const MOB = (function () {
           text: { success: 'You walk in with three men and walk out with the ledger. The vault manager decides he saw nothing.', failure: 'The bank guards were expecting trouble. You get out through a window, bleeding.' } },
       ],
     },
+    {
+      id: 'quiet-retirement', title: 'A Quiet Retirement', category: 'Story', chapter: 5, repeatable: false, district: 'south-side', locationId: 'loc_frankies_shop',
+      rankReq: 'lieutenant', prereq: ['price-of-loyalty'], energy: 25, difficulty: 'Hard', risk: 'Medium', cash: [100, 150], xp: 160, respect: 32, cooldownSec: 0, glyph: 'heart', flags: ['frankie_stepping_back'],
+      summary: 'Frankie tells you, privately, that he wants out.',
+      briefing: 'Frankie has closed the shop early again. He pours one glass this time, and he tells you the thing he has told no one: his knees, his wife\'s letters from the country, and the feeling that the street no longer needs him. He wants it quiet until the partners are ready. He is asking you to carry the secret, and to start carrying a little more than that.',
+      choices: [
+        { id: 'keep-it-quiet', label: 'Keep the Secret', desc: 'Say nothing, and let the old man choose his day.', attr: 'intelligence', chance: 0.54, partial: 0.22, mult: 1.0, heat: [0, 1], fail: { health: [0, 1], cash: [4, 8] },
+          text: { success: 'Three people ask you what is wrong with Frankie. You tell all three he is tired, which is true, and nothing more.', partial: 'You say nothing, but your silence is noticed by two men who notice such things.', failure: 'You let one sentence slip over a card table. By morning it is on three tongues.' } },
+        { id: 'take-the-books', label: 'Take Over the Daily Books', desc: 'Quietly start doing the work Frankie can no longer face.', attr: 'charisma', chance: 0.5, partial: 0.2, mult: 1.1, boost: { flag: 'frankie_trusts_player', amount: 0.1, label: 'Frankie trusts you' }, heat: [1, 3], fail: { health: [0, 2], cash: [5, 10] },
+          text: { success: 'By the end of the week the collectors are bringing their envelopes to you, and Frankie pretends not to see it. He nods once at the till.', partial: 'Most of the street follows your lead. A few old men still wait for Frankie.', failure: 'You reach for the books before Frankie is ready to let go. He takes them back, quietly, and says nothing for a day.' } },
+        { id: 'shield-him', label: 'Shield Him From Trouble', desc: 'Handle the problems before they reach his door.', attr: 'strength', chance: 0.46, partial: 0.15, mult: 1.2, heat: [4, 6], fail: { health: [4, 12], cash: [0, 0] },
+          text: { success: 'Two small problems never reach Frankie\'s shop because you meet them at the corner. He never learns what they were.', partial: 'You keep the worst away, but one visitor still reaches the counter.', failure: 'A problem you tried to stop at the corner walks past you and into the shop.' } },
+      ],
+    },
+    {
+      id: 'rivals-envoy', title: 'The Rival\'s Envoy', category: 'Story', chapter: 5, repeatable: false, district: 'near-north', locationId: 'loc_blue_lantern',
+      rankReq: 'capo', prereq: ['quiet-retirement'], energy: 25, difficulty: 'Hard', risk: 'High', cash: [110, 160], xp: 175, respect: 34, cooldownSec: 0, glyph: 'eye', flags: [],
+      summary: 'A stranger from the other side offers a peace that sounds too good.',
+      briefing: 'A well-dressed man has taken the corner table at the Blue Lantern and asked for you by name. He speaks for the other side, and he speaks softly. He is offering peace on the river and a share of the north-side trade. It is a very generous offer, and generous offers are the ones you check twice.',
+      choices: [
+        { id: 'hear-him-out', label: 'Hear Him Out', desc: 'Let the stranger talk until he says something he did not mean to.', attr: 'intelligence', chance: 0.52, partial: 0.22, mult: 1.0, heat: [0, 2], fail: { health: [0, 2], cash: [4, 9] },
+          text: { success: 'He talks for an hour and mentions a warehouse he should not know about. You thank him for the wine.', partial: 'You learn what he wants, though not what he is hiding.', failure: 'The envoy is better at this than you are. You leave with a handshake and a headache.' } },
+        { id: 'call-in-favor', label: 'Call in a Favor', desc: 'Ask the club owner what she knows about the man.', attr: 'charisma', chance: 0.5, partial: 0.2, mult: 1.1, boost: { flag: 'club_owner_owed_favor', amount: 0.1, label: 'The club owner owes you' }, heat: [1, 2], fail: { health: [0, 1], cash: [5, 10] },
+          text: { success: 'The club owner tells you the envoy\'s real name, his last three addresses, and which of his friends are no longer friends.', partial: 'She tells you something useful and something she wishes you had not asked about.', failure: 'The club owner has no favors to spare tonight, and says so loudly enough for the room to hear.' } },
+        { id: 'show-strength', label: 'Show Him Who You Are', desc: 'Make it clear what kind of table this is.', attr: 'strength', chance: 0.44, partial: 0, mult: 1.3, heat: [6, 8], fail: { health: [8, 16], cash: [0, 0] },
+          text: { success: 'The envoy\'s smile stays where it is, but his hands stop moving. He leaves a very generous tip and a much smaller offer.', failure: 'The envoy came with friends. They are polite about it all the way to the sidewalk.' } },
+      ],
+    },
+    {
+      id: 'books-nobody-opens', title: 'Books Nobody Opens', category: 'Story', chapter: 5, repeatable: false, district: 'the-loop', locationId: 'loc_marlowe_office',
+      rankReq: 'capo', prereq: ['rivals-envoy'], energy: 25, difficulty: 'Hard', risk: 'High', cash: [120, 170], xp: 190, respect: 36, cooldownSec: 0, glyph: 'book', flags: ['rival_ledger_seen'],
+      summary: 'You check whether the envoy\'s numbers are real.',
+      briefing: 'The envoy left a ledger as a gesture of good faith, and the numbers in it are too tidy. Somewhere in the Marlowe Trading Office there is a second set that nobody has opened in years, and it will tell you which set of books is lying. Reading it means getting into the room after the clerks have gone home.',
+      choices: [
+        { id: 'read-between-lines', label: 'Read Between the Lines', desc: 'Compare the two sets of figures and find what does not add up.', attr: 'intelligence', chance: 0.52, partial: 0.24, mult: 1.0, heat: [1, 2], fail: { health: [0, 1], cash: [5, 10] },
+          text: { success: 'The envoy\'s ledger balances so perfectly that it has to be invented. You find the line that gives it away at two in the morning.', partial: 'You find the discrepancy, but not who benefits from it.', failure: 'You balance the wrong column twice and leave with a headache and an empty notebook.' } },
+        { id: 'ask-informant', label: 'Lean on the Informant', desc: 'Use what you know about the leak to get a look at the second set.', attr: 'charisma', chance: 0.48, partial: 0.2, mult: 1.1, boost: { flag: 'informant_identity_discovered', amount: 0.1, label: 'You know who talked' }, heat: [2, 3], fail: { health: [0, 3], cash: [5, 10] },
+          text: { success: 'The man who once talked to the inspector is happy to be useful, and even happier to be forgiven. He unlocks the cabinet himself.', partial: 'He helps, but only with half the cabinet.', failure: 'He remembers you knowing his secret and decides to remember it out loud.' } },
+        { id: 'break-in', label: 'Go In After Hours', desc: 'Let yourself into the office once the clerks have gone.', attr: 'agility', chance: 0.44, partial: 0.15, mult: 1.3, heat: [6, 8], fail: { health: [6, 14], cash: [4, 8] },
+          text: { success: 'You are in and out in nineteen minutes. The only evidence is a drawer that is now one inch more closed than it was.', partial: 'You get the pages you came for, and a night watchman gets a good look at your shoes.', failure: 'A cleaner you did not expect finds you in the stacks. She screams exactly once.' } },
+      ],
+    },
+    {
+      id: 'debt-called-in', title: 'A Debt Called In', category: 'Story', chapter: 5, repeatable: false, district: 'south-side', locationId: 'loc_central_market',
+      rankReq: 'capo', prereq: ['books-nobody-opens'], energy: 30, difficulty: 'Hard', risk: 'High', cash: [130, 190], xp: 205, respect: 38, cooldownSec: 0, glyph: 'dollar', flags: [],
+      summary: 'An old favor comes due, with interest.',
+      briefing: 'Everyone you helped on the way up remembers it, and some of them remember it a little too well. A man you once helped has become a man who needs help in return: it is a small request, delivered at Central Market by someone who has never asked for anything small. The price of a favor is that it is eventually asked back.',
+      choices: [
+        { id: 'pay-it-back', label: 'Pay It Back in Full', desc: 'Do exactly what you owe, and be done with it.', attr: 'charisma', chance: 0.54, partial: 0.2, mult: 1.0, heat: [1, 2], fail: { health: [0, 2], cash: [6, 12] },
+          text: { success: 'You settle the debt without argument and without interest. The old man tips his hat and calls you square.', partial: 'The debt is paid, though he still thinks you owe him a little respect.', failure: 'He asks for more than you owe, and you give it, and he asks again.' } },
+        { id: 'use-the-file', label: 'Use What You Know', desc: 'Remind him what the inspector\'s file says about him.', attr: 'intelligence', chance: 0.48, partial: 0.2, mult: 1.2, boost: { flag: 'inspector_investigation_known', amount: 0.1, label: 'You know the inspector\'s file' }, heat: [3, 5], fail: { health: [0, 3], cash: [5, 10] },
+          text: { success: 'You mention one line from a file he did not know you had seen. The debt is forgiven before you finish the sentence.', partial: 'He agrees to a smaller debt, and remembers who made him say so.', failure: 'He has a file of his own, and quotes it back to you.' } },
+        { id: 'collect-first', label: 'Collect First', desc: 'Turn the debt around and collect what he owes you.', attr: 'strength', chance: 0.44, partial: 0, mult: 1.4, heat: [7, 9], fail: { health: [8, 18], cash: [0, 0] },
+          text: { success: 'You find the old man at the market and make the conversation very short. By evening his account is square and so is yours.', failure: 'The old man has friends in the market. They are very loud about it.' } },
+      ],
+    },
+    {
+      id: 'night-before-vote', title: 'The Night Before the Vote', category: 'Story', chapter: 5, repeatable: false, district: 'near-north', locationId: 'loc_private_room',
+      rankReq: 'capo', prereq: ['debt-called-in'], energy: 30, difficulty: 'Hard', risk: 'High', cash: [150, 220], xp: 225, respect: 42, cooldownSec: 0, glyph: 'crown', flags: ['succession_vote_won'],
+      summary: 'The partners meet tonight. How you got here decides how you walk in.',
+      briefing: 'The partners have taken the Private Room for the night and the door is closed. Tomorrow they will say aloud who runs the South Side when Frankie steps back. Tonight is when it is decided, and it will not be decided by speeches. Every favor, every kept secret and every quiet evening you have given the neighborhood is about to be counted.',
+      choices: [
+        { id: 'make-your-case', label: 'Make Your Case', desc: 'Say plainly what you would do with the neighborhood.', attr: 'charisma', chance: 0.52, partial: 0.22, mult: 1.0, boost: { flag: 'frankie_trusts_player', amount: 0.1, label: 'Frankie speaks for you' }, heat: [1, 2], fail: { health: [0, 2], cash: [6, 12] },
+          text: { success: 'You speak for four minutes. When you finish, the oldest partner looks to Frankie, and Frankie looks at the table and smiles.', partial: 'You win the room but not the oldest chair. It will do.', failure: 'You say too much, too late, and a quiet man across the table says one very good sentence.' } },
+        { id: 'count-the-favors', label: 'Count the Favors', desc: 'Make sure every man in the room remembers what he owes you.', attr: 'intelligence', chance: 0.5, partial: 0.2, mult: 1.1, heat: [2, 3], fail: { health: [0, 2], cash: [6, 12] },
+          text: { success: 'You do not raise your voice. You name three small kindnesses and the men who received them, and the room goes quiet in your favor.', partial: 'Most of the favors are remembered, a few conveniently forgotten.', failure: 'One of the debts you count turns out to have been paid, by someone else, years ago.' } },
+        { id: 'hold-the-door', label: 'Hold the Door', desc: 'Make sure nobody leaves, and nobody interrupts.', attr: 'strength', chance: 0.42, partial: 0, mult: 1.3, heat: [7, 9], fail: { health: [8, 18], cash: [0, 0] },
+          text: { success: 'The door does not open until the vote is done. Nobody thanks you, and nobody forgets it.', failure: 'Someone leaves by the kitchen. By midnight the vote is a very different conversation.' } },
+      ],
+    },
   ];
   const MISSION_BY_ID = Object.fromEntries(MISSIONS.map((m) => [m.id, m]));
 
-  /* All canon chapters 1-4 are playable. Nothing planned remains. */
+  /* Canon chapters 1-4 and the invented Chapter 5 ("The Succession", approved 2026-10-29) are playable. Nothing planned remains. */
   const PLANNED_MISSIONS = [];
 
   /* ---------- fictional demo profiles for the leaderboard ---------- */
@@ -2737,7 +2810,7 @@ const ART = (function () {
     return head('Chicago, 1931', 'Job Board', 'Work for Frankie Russo and his neighbors. Start a job, pick one of three approaches and claim what you earn. Every approach carries its own odds.',
       '<div class="filters" role="group" aria-label="Filter jobs">' + f.map((x) => '<button class="filter" data-act="job-filter" data-f="' + x[0] + '" aria-pressed="' + (ui.jobFilter === x[0]) + '">' + x[1] + '</button>').join('') + '</div>') +
       pgWrap(activeJobBanner() + combatBanner()) +
-      (list.length ? chapters.map((c, i) => '<h2 data-pg="head" class="sec-title' + (i ? '' : ' sec-first') + '">Chapter ' + c + ' <small>' + (c === 1 ? 'ARRIVING IN CHICAGO' : c === 2 ? 'TROUBLE ON THE RIVER' : c === 3 ? 'PRESSURE FROM EVERY SIDE' : 'WHAT LOYALTY COSTS') + '</small></h2>' + grid(story.filter((m) => m.chapter === c))).join('') + (jobs.length ? '<h2 data-pg="head" class="sec-title' + (story.length ? '' : ' sec-first') + '">Repeatable jobs</h2>' + grid(jobs) : '') :
+      (list.length ? chapters.map((c, i) => '<h2 data-pg="head" class="sec-title' + (i ? '' : ' sec-first') + '">Chapter ' + c + ' <small>' + (c === 1 ? 'ARRIVING IN CHICAGO' : c === 2 ? 'TROUBLE ON THE RIVER' : c === 3 ? 'PRESSURE FROM EVERY SIDE' : c === 4 ? 'WHAT LOYALTY COSTS' : 'THE SUCCESSION') + '</small></h2>' + grid(story.filter((m) => m.chapter === c))).join('') + (jobs.length ? '<h2 data-pg="head" class="sec-title' + (story.length ? '' : ' sec-first') + '">Repeatable jobs</h2>' + grid(jobs) : '') :
         '<div class="empty">' + icon('brief', 30) + '<h3>Nothing here right now</h3><p>No jobs match this filter. Try another one.</p><button class="btn ghost sm" data-act="job-filter" data-f="all">Show all jobs</button></div>') +
       '<h2 data-pg="head" class="sec-title">Street trouble <small>COMBAT · REPEATABLE</small></h2><div class="grid g3">' + MOB.ENCOUNTERS.map(encounterCard).join('') + '</div>' +
       (!MOB.PLANNED_MISSIONS.length ? '' : '<h2 class="sec-title">The road ahead <small>PLANNED · NOT YET PLAYABLE</small></h2><div class="roadmap">' +
