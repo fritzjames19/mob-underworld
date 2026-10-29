@@ -87,6 +87,8 @@ p { margin: 0; }
 .spacer { flex: 1; }
 .cash { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border: 1px solid var(--gold-dim); background: rgba(197,161,90,.07); color: var(--gold); border-radius: 3px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .pop-wrap { position: relative; }
+.nav button .badge-dot { position: static; margin-left: auto; }
+.topbar .menu-btn { position: relative; }
 .badge-dot { position: absolute; top: -5px; right: -5px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--burg-hi); color: #fff; font-size: 10.5px; font-weight: 600; display: grid; place-items: center; }
 .avatar-btn { width: 40px; height: 40px; padding: 0; border: 1px solid var(--gold-dim); background: none; border-radius: 3px; overflow: hidden; }
 .avatar-btn svg { display: block; width: 100%; height: 100%; }
@@ -2503,7 +2505,7 @@ const ART = (function () {
     $('#sidebar').innerHTML =
       '<div class="brand"><div class="brand-mark">M<span>O</span>B</div><div class="brand-sub">The Underworld</div></div>' +
       '<nav class="nav" aria-label="Pages">' +
-      ROUTES.filter((r) => !r.hidden).map((r) => '<button data-act="nav" data-route="' + r.id + '"' + (ui.route === r.id ? ' aria-current="page"' : '') + '>' + icon(r.icon, 19) + '<span>' + r.label + '</span></button>').join('') +
+      ROUTES.filter((r) => !r.hidden).map((r) => '<button data-act="nav" data-route="' + r.id + '"' + (ui.route === r.id ? ' aria-current="page"' : '') + '>' + icon(r.icon, 19) + '<span>' + r.label + '</span>' + (r.id === 'crew' ? crewDot() : '') + '</button>').join('') +
       '</nav>' +
       '<div class="side-user"><div class="frame" style="padding:2px;border-width:1px">' + portrait(p.portrait, 44) + '</div><div class="who"><b>' + esc(p.name) + '</b><span>' + esc(rank) + '</span></div>' +
       '<button class="icon-btn" data-act="nav" data-route="settings" aria-label="Settings"' + (ui.route === 'settings' ? ' aria-current="page"' : '') + '>' + icon('sliders', 18) + '</button></div>';
@@ -2527,7 +2529,7 @@ const ART = (function () {
     const unread = S.activity.filter((a) => a.ts > ui.bellSeen).length;
     const recent = S.activity.slice(0, 6);
     $('#topbar').innerHTML =
-      '<button class="icon-btn menu-btn" data-act="drawer-open" aria-label="Open navigation">' + icon('menu', 20) + '</button>' +
+      '<button class="icon-btn menu-btn" data-act="drawer-open" aria-label="Open navigation">' + icon('menu', 20) + crewDot() + '</button>' +
       '<div class="district-chip" title="Current district">' + icon('pin', 16) + '<span>' + esc(d.name) + '</span></div>' +
       '<div class="spacer"></div>' +
       '<div class="cash meter-chip" aria-label="Energy ' + p.energy + ' of ' + MOB.CONFIG.maxEnergy + '" title="Energy">' + icon('bolt', 16) + '<span class="num">' + p.energy + '</span></div>' +
@@ -3215,6 +3217,7 @@ const ART = (function () {
       if (ui.modalPushed) ui.modalPushed = false;   // the window's history entry became this page's entry
     } catch (e) { /* ignore */ }
     render();
+    if (route === 'crew' && cloud.on && !crewUi.loading) setTimeout(() => loadCrew(true), 0); /* always show the freshest crew data when you open the page */
     window.scrollTo(0, 0);
     const v = $('#view'); if (v) v.focus({ preventScroll: true });
   }
@@ -3744,6 +3747,22 @@ const ART = (function () {
   const crewUi = { at: 0, data: null, browse: null, loading: false, err: '', ask: null, loadedFor: null };
   const ROLE_NAME = { member: 'Member', recruiter: 'Recruiter', officer: 'Officer', leader: 'Leader' };
   const ROLE_ORD = { member: 1, recruiter: 2, officer: 3, leader: 4 };
+  /* A small red number on Crew (and on the phone menu button) when something waits for you: an invitation, or an application you can answer. */
+  function crewAlerts() {
+    if (!cloud.on || !crewUi.data) return 0;
+    const d = crewUi.data;
+    if (!d.crew) return (d.invitations || []).length;
+    return d.me && d.me.can_recruit ? (d.requests || []).filter((r) => r.kind === 'application').length : 0;
+  }
+  function crewDot() { const n = crewAlerts(); return n ? '<span class="badge-dot" role="status" aria-label="' + n + ' crew item' + (n > 1 ? 's' : '') + ' waiting">' + n + '</span>' : ''; }
+  let crewSeen = 0;
+  setInterval(async () => {
+    if (!cloud.on || document.hidden || cloud.busy || crewUi.loading || Date.now() - crewUi.at < 30000) return;
+    await loadCrew(true);
+    const n = crewAlerts();
+    if (n > crewSeen) toast(crewUi.data && !crewUi.data.crew ? 'You have a new crew invitation.' : 'Someone applied to join your crew.', 'gold');
+    crewSeen = n; renderSidebar(); renderTopbar();
+  }, 5000);
   async function loadCrew(quiet) {
     if (!cloud.on) return;
     if (!quiet) { crewUi.loading = true; render(); }
@@ -3856,7 +3875,7 @@ const ART = (function () {
         (CLOUD_ENABLED ? '<div><button class="btn" data-act="go-online">Go online</button></div>' : '<p style="color:var(--muted)">This offline copy has no online mode.</p>') + '</section>';
     }
     if (crewUi.loadedFor !== (cloud.session && cloud.session.email) && !crewUi.loading) setTimeout(() => loadCrew(), 0);
-    else if (Date.now() - crewUi.at > 20000 && !crewUi.loading && !cloud.busy) setTimeout(() => loadCrew(true), 0);
+    else if (Date.now() - crewUi.at > 4000 && !crewUi.loading && !cloud.busy) setTimeout(() => loadCrew(true), 0);
     const h = head('The Outfit', crewUi.data && crewUi.data.crew ? crewUi.data.crew.name : 'Crew', 'A crew is a few players working together with a shared purse.');
     if (crewUi.err) return h + '<section class="card" style="padding:18px"><p>' + esc(crewUi.err) + '</p><button class="btn sm" data-act="crew-reload">Try again</button></section>';
     if (!crewUi.data) return h + '<p style="color:var(--muted)">Loading your crew…</p>';
