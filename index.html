@@ -313,6 +313,13 @@ main { padding: 26px var(--gutter) 60px; min-width: 0; max-width: 1280px; width:
 .gt.c-legendary { color: #ffe7a0; text-shadow: 0 0 8px rgba(255,210,90,.95), 0 0 22px rgba(255,170,40,.75), 0 0 40px rgba(255,140,20,.4); }
 @keyframes gtpulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.28); } }
 @media (prefers-reduced-motion: reduce) { .gt { animation: none; } }
+
+/* background music control */
+.music-ctl { position: fixed; left: 264px; bottom: 14px; z-index: 60; display: flex; align-items: center; gap: 10px; padding: 4px; background: rgba(14,13,12,.92); border: 1px solid var(--line); border-radius: 4px; }
+.music-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; background: #1b1a19; color: var(--gold); border: 1px solid var(--line); border-radius: 3px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.music-btn[aria-pressed="true"] { border-color: var(--gold); box-shadow: 0 0 12px rgba(197,161,90,.25); }
+.music-vol { width: 90px; accent-color: var(--gold); }
+@media (max-width: 700px) { .music-ctl { left: auto; right: 10px; bottom: auto; top: 64px; flex-direction: row-reverse; } .music-btn .mu-t { display: none; } .music-btn { padding: 8px 10px; } .music-vol { width: 70px; } }
 .bonus-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .bonus { display: inline-flex; gap: 5px; align-items: center; padding: 2px 8px; font-size: 12px; border: 1px solid rgba(122,163,131,.4); color: var(--good); border-radius: 2px; }
 .shop-front { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 3px; min-height: 150px; display: flex; align-items: flex-end; margin-bottom: 22px; isolation: isolate; }
@@ -4033,6 +4040,113 @@ const ART = (function () {
       catch (er) { if (er.signedOut) { showAuth(friendly(er)); return; } if (ui.modal && ui.modal.type === 'titlerec') { ui.modal.err = friendly(er); render(); } }
     }
   });
+  /* ---------- background music ----------
+     Original music made live in the browser (Web Audio): a slow, smoky minor-key swing in C minor with brushed ride,
+     walking bass, a soft electric piano and a lazy muted-trumpet line that changes every time. No audio files, no licences.
+     Off until the player taps the music button (browsers block sound before a tap); the choice and volume are remembered. */
+  const MUSIC = (() => {
+    const BPM = 76, B = 60 / BPM, SW = B * 2 / 3;
+    const CH = [ // root (bass octave), intervals
+      { r: 36, t: [0, 3, 7, 10] }, { r: 41, t: [0, 3, 7, 10] }, { r: 38, t: [0, 3, 6, 10] }, { r: 43, t: [0, 4, 7, 10] },
+      { r: 36, t: [0, 3, 7, 10] }, { r: 44, t: [0, 4, 7, 11] }, { r: 38, t: [0, 3, 6, 10] }, { r: 43, t: [0, 4, 7, 10] },
+    ];
+    const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+    const read = (k, d) => { try { const v = store.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
+    const write = (k, v) => { try { store.setItem(k, v); } catch (e) { /* ignore */ } };
+    let ctx = null, master = null, wet = null, noise = null, timer = null, nextBeat = 0, beatNo = 0, on = false, volume = Number(read('mob_music_vol', '0.5'));
+    if (!(volume >= 0 && volume <= 1)) volume = 0.5;
+    function setup() {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
+      ctx = new AC();
+      const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 4;
+      master = ctx.createGain(); master.gain.value = 0; master.connect(comp); comp.connect(ctx.destination);
+      const verb = ctx.createConvolver(), len = Math.floor(ctx.sampleRate * 1.8), imp = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let c = 0; c < 2; c++) { const d = imp.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
+      verb.buffer = imp; wet = ctx.createGain(); wet.gain.value = 0.32; verb.connect(wet); wet.connect(master);
+      ctx.__verb = verb;
+      const nb = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1; noise = nb;
+      return true;
+    }
+    function out(node, sendVerb) { node.connect(master); if (sendVerb) node.connect(ctx.__verb); }
+    function tone(type, freq, t, dur, vol, opts) {
+      opts = opts || {};
+      const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+      o.type = type; o.frequency.value = freq; f.type = 'lowpass'; f.frequency.value = opts.cut || 1800;
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + (opts.atk || 0.01)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      if (opts.vib) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = 5; lg.gain.value = freq * 0.006; l.connect(lg); lg.connect(o.frequency); l.start(t + 0.15); l.stop(t + dur + 0.05); }
+      o.connect(f); f.connect(g); out(g, opts.verb); o.start(t); o.stop(t + dur + 0.05);
+    }
+    function brush(t, vol, hp, dur) {
+      const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      s.buffer = noise; f.type = 'bandpass'; f.frequency.value = hp; f.Q.value = 0.8;
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      s.connect(f); f.connect(g); out(g, false); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
+    }
+    function voicing(c) { return c.t.map((i) => { let n = (c.r % 12) + i; while (n < 58) n += 12; while (n >= 72) n -= 12; return n; }); }
+    function scheduleBeat(n, t) {
+      const bar = Math.floor(n / 4) % 8, beat = n % 4, c = CH[bar], nx = CH[(bar + 1) % 8];
+      // walking bass: root, third, fifth, then a step into the next chord
+      const walk = [c.r, c.r + c.t[1], c.r + c.t[2], nx.r + (Math.random() < 0.5 ? -1 : 1) + (nx.r < c.r - 6 ? 12 : 0)];
+      let bn = walk[beat]; while (bn > 50) bn -= 12; while (bn < 33) bn += 12;
+      tone('triangle', hz(bn), t, B * 0.9, 0.42, { cut: 520, atk: 0.012 });
+      // ride cymbal pattern and foot hi-hat on 2 and 4
+      brush(t, beat === 0 ? 0.07 : 0.055, 7200, 0.22);
+      if (beat === 1 || beat === 3) { brush(t + SW, 0.045, 7600, 0.18); brush(t, 0.05, 2400, 0.09); }
+      // piano comping: beat 1, and the "and" of 2
+      const v = voicing(c);
+      if (beat === 0 && Math.random() < 0.85) v.forEach((m, i) => tone('triangle', hz(m), t + i * 0.012, B * 1.1, 0.07, { cut: 1500, atk: 0.006, verb: true }));
+      if (beat === 1 && Math.random() < 0.6) v.forEach((m, i) => tone('triangle', hz(m), t + SW + i * 0.01, B * 0.5, 0.055, { cut: 1400, atk: 0.006, verb: true }));
+      // lazy muted-trumpet line from chord tones and a blue note
+      if ((beat === 0 && Math.random() < 0.65) || (beat === 2 && Math.random() < 0.45)) {
+        const pool = c.t.map((i) => (c.r % 12) + i + 72).concat([75, 77, 78]);
+        const note = pool[Math.floor(Math.random() * pool.length)], dur = B * (1 + Math.random() * 2);
+        tone('sawtooth', hz(note > 84 ? note - 12 : note), t + (Math.random() < 0.3 ? SW : 0), dur, 0.05, { cut: 1300, atk: 0.07, vib: true, verb: true });
+      }
+    }
+    function tick() {
+      if (!ctx || !on) return;
+      while (nextBeat < ctx.currentTime + 0.6) { scheduleBeat(beatNo, nextBeat); nextBeat += B; beatNo++; }
+    }
+    function apply() { if (master) master.gain.setTargetAtTime(on ? volume * 0.9 : 0, ctx.currentTime, 0.25); }
+    function start() {
+      if (!ctx && !setup()) return false;
+      on = true; write('mob_music', '1'); ctx.resume();
+      if (!timer) { nextBeat = ctx.currentTime + 0.15; beatNo = 0; timer = setInterval(tick, 150); }
+      apply(); paint(); return true;
+    }
+    function stop() {
+      on = false; write('mob_music', '0'); apply();
+      setTimeout(() => { if (!on && timer) { clearInterval(timer); timer = null; if (ctx) ctx.suspend(); } }, 900);
+      paint();
+    }
+    function setVol(v) { volume = Math.max(0, Math.min(1, v)); write('mob_music_vol', String(volume)); apply(); }
+    let btn = null, vol = null;
+    function paint() {
+      if (!btn) return;
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.setAttribute('aria-label', on ? 'Turn the music off' : 'Turn the music on');
+      btn.innerHTML = '<span aria-hidden="true" style="font-size:18px;line-height:1">' + (on ? '♫' : '♪') + '</span><span class="mu-t">' + (on ? 'Music on' : 'Music off') + '</span>';
+      vol.style.display = on ? '' : 'none';
+    }
+    function mount() {
+      if (btn || typeof document === 'undefined') return;
+      const wrap = document.createElement('div'); wrap.className = 'music-ctl';
+      btn = document.createElement('button'); btn.type = 'button'; btn.className = 'music-btn';
+      vol = document.createElement('input'); vol.type = 'range'; vol.min = '0'; vol.max = '1'; vol.step = '0.05'; vol.value = String(volume); vol.setAttribute('aria-label', 'Music volume'); vol.className = 'music-vol';
+      btn.addEventListener('click', () => { if (on) stop(); else start(); });
+      vol.addEventListener('input', () => setVol(Number(vol.value)));
+      wrap.appendChild(btn); wrap.appendChild(vol); document.body.appendChild(wrap); paint();
+      document.addEventListener('visibilitychange', () => { if (!ctx || !on) return; if (document.hidden) ctx.suspend(); else ctx.resume(); });
+      // remembered "on": sound needs a tap first, so start on the first tap or key anywhere
+      if (read('mob_music', '0') === '1') {
+        const go = () => { document.removeEventListener('pointerdown', go, true); document.removeEventListener('keydown', go, true); if (!on) start(); };
+        document.addEventListener('pointerdown', go, true); document.addEventListener('keydown', go, true);
+        btn.innerHTML = '<span aria-hidden="true" style="font-size:18px;line-height:1">♪</span><span class="mu-t">Tap to play music</span>';
+      }
+    }
+    return { mount, start, stop, isOn: () => on };
+  })();
+  if (document.readyState !== 'loading') MUSIC.mount(); else document.addEventListener('DOMContentLoaded', () => MUSIC.mount());
 
   /* ---------- boot ---------- */
   render();
