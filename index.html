@@ -2828,13 +2828,14 @@ const ART = (function () {
 
   function pageCity() {
     const p = S.player, ri = MOB.playerRankIdx(S);
+    cityTerrLoad();
     return head('Five districts', 'The City', 'Each district has its own people, jobs and dangers. Raise your rank to open the doors that stay closed to newcomers.') +
       '<div class="grid g2">' + MOB.DISTRICTS.map((d) => {
         const locked = ri < MOB.RANK_IDX[d.rankReq], here = p.district === d.id;
         const locs = MOB.LOCATIONS.filter((l) => l.district === d.id);
         return '<article data-pg="item" class="card district ' + (locked ? 'locked' : '') + (here ? ' here' : '') + '"><div class="art' + (ART.districtHasPhoto(d.art) ? '' : ' temp-art') + '">' + ART.districtArt(d.art, d.name) +
           (here ? '<span class="chip gold ribbon">You are here</span>' : locked ? '<span class="chip bad ribbon">' + icon('lock', 12) + 'Locked</span>' : '') + '</div>' +
-          '<div class="info"><h3>' + d.name + '</h3><p style="color:var(--muted)">' + d.blurb + '</p><ul>' + locs.map((l) => '<li>' + esc(l.name) + '</li>').join('') + '</ul>' +
+          '<div class="info"><h3>' + d.name + '</h3>' + cityRuler(d.id) + '<p style="color:var(--muted)">' + d.blurb + '</p><ul>' + locs.map((l) => '<li>' + esc(l.name) + '</li>').join('') + '</ul>' +
           '<div class="foot"><span class="status">' + (d.rankReq !== 'newcomer' ? icon(locked ? 'lock' : 'check', 14) + (locked ? 'Opens at ' : 'Opened at ') + esc(MOB.rankName(d.rankReq)) : 'Open from the start') + '</span>' +
           '<button class="btn sm" data-act="visit" data-id="' + d.id + '"' + (here ? ' disabled' : '') + '>' + (here ? 'Current location' : locked ? 'Locked — ' + esc(MOB.rankName(d.rankReq)) : 'Visit District') + '</button></div></div></article>';
       }).join('') + '</div>' +
@@ -4150,7 +4151,7 @@ const ART = (function () {
     catch (e) {
       if (e.signedOut) { showAuth(friendly(e)); return; }
       terrUi.err = (e.status === 404 || /could not find|function/i.test(e.message || '')) ? 'Territory wars need the latest database update (migration 0017). Ask whoever runs the game to install it.' : friendly(e);
-    } finally { terrUi.loading = false; if (ui.route === 'territory') render(); }
+    } finally { terrUi.loading = false; if (ui.route === 'territory' || ui.route === 'city') render(); }
   }
   async function terrCall(fn, args, okMsg) {
     if (cloud.busy) return;
@@ -4162,6 +4163,17 @@ const ART = (function () {
       await loadTerritory(true);
     } catch (e) { if (e.signedOut) showAuth(friendly(e)); else toast(friendly(e), 'error'); }
     finally { cloud.busy = false; document.body.classList.remove('busy'); render(); }
+  }
+  /* City page: which crew rules each district (online only; quietly absent offline or before the update is installed) */
+  function cityTerrLoad() {
+    if (!cloud.on || terrUi.loading || terrUi.err) return;
+    if (terrUi.loadedFor !== (cloud.session && cloud.session.email) || Date.now() - terrUi.at > 30000) setTimeout(() => loadTerritory(true), 0);
+  }
+  function cityRuler(id) {
+    if (!cloud.on || !terrUi.data) return '';
+    const d = terrUi.data.districts.find((x) => x.id === id); if (!d) return '';
+    const war = d.war ? ' <span class="chip bad">At war</span>' : '';
+    return '<div style="margin:2px 0 6px;font-size:13.5px">' + (d.ruler ? 'Ruled by <span class="gt c-legendary" style="font-size:14px">' + esc(d.ruler.name) + '</span>' : '<span style="color:var(--muted)">Unclaimed</span>') + war + '</div>';
   }
   const leftText = (ms) => {
     const m = Math.max(0, Math.round((ms - Date.now()) / 60000));
@@ -4260,10 +4272,17 @@ const ART = (function () {
     else if (cash < o.price_minor) why = 'You are short.';
     else if (it && !it.stackable && o.owned >= 1) why = 'You already own one.';
     const art = it ? '<div class="art ' + (ART.itemHasPhoto(it.art) ? 'has-photo' : 'temp-art') + '">' + ART.itemArt(it.art, 64) + '</div>' : '';
-    return '<article class="card item" style="display:grid;gap:8px;padding:14px">' + art +
+    const ph = isPhone();
+    if (ph) {
+      return '<article data-pg="item" class="card" style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px"><div style="min-width:0"><h3 style="font-size:16px">' + esc(o.name) + '</h3>' +
+        '<div style="font-size:12.5px;color:var(--muted)"><b style="color:var(--text,#eee)">' + money(o.price_minor) + '</b> · <span style="color:var(--heat,#d9822b)">+' + o.heat_on_buy + ' heat</span> · ' + left + '/' + o.daily_limit + ' left' + (o.always ? '' : ' · tonight') + '</div>' +
+        (why ? '<div style="font-size:12.5px;color:var(--muted)">' + esc(why) + '</div>' : '') + '</div>' +
+        (why ? '' : ask ? '<div style="display:grid;gap:6px;flex:none"><button class="btn sm" data-act="ug-confirm" data-id="' + o.offer_id + '">Pay +' + o.heat_on_buy + ' heat</button><button class="btn ghost sm" data-act="ug-cancel">Cancel</button></div>' : '<button class="btn sm" style="flex:none" data-act="ug-ask" data-id="' + o.offer_id + '">Buy</button>') + '</article>';
+    }
+    return '<article data-pg="item" class="card item" style="display:grid;gap:6px;padding:12px;align-content:start">' + (ph ? '' : art) +
       '<h3>' + esc(o.name) + '</h3>' +
       '<div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase" class="rar-' + (it ? it.rarity : 'Common') + '">' + (it ? it.rarity : '') + (o.always ? ' · always in stock' : ' · tonight only') + '</div>' +
-      (it ? '<p style="color:var(--muted);font-size:13.5px">' + esc(it.description) + '</p>' : '') +
+      (it && !ph ? '<p style="color:var(--muted);font-size:13.5px">' + esc(it.description) + '</p>' : '') +
       '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:13.5px"><b>' + money(o.price_minor) + '</b><span style="color:var(--heat,#d9822b)">+' + o.heat_on_buy + ' heat</span><span style="color:var(--muted)">' + left + ' of ' + o.daily_limit + ' left today</span>' + (o.owned ? '<span style="color:var(--muted)">You have ' + o.owned + '</span>' : '') + '</div>' +
       (why ? '<div style="color:var(--muted);font-size:13px">' + esc(why) + '</div>'
         : ask ? '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="ug-confirm" data-id="' + o.offer_id + '">Pay ' + money(o.price_minor) + ' (+' + o.heat_on_buy + ' heat)</button><button class="btn ghost sm" data-act="ug-cancel">Cancel</button></div>'
@@ -4284,7 +4303,7 @@ const ART = (function () {
     if (!d.open) return h + '<section class="card" style="padding:20px"><p style="color:var(--muted)">Make a name first. Reach <b>' + esc(d.need_rank_name) + '</b>.</p></section>';
     const left = (typeof leftText === 'function') ? leftText(d.refresh_at) : '';
     const heatWarn = d.heat >= 70 ? '<div class="card" style="padding:12px;border-color:var(--danger,#b5402f)"><b>You are running hot (' + d.heat + ').</b> Everything here adds more. Use Forged Papers or lie low.</div>' : '';
-    return h + '<p style="color:var(--muted);margin-bottom:12px">Cash ' + money(d.cash_minor) + ' · Heat ' + d.heat + ' · Tonight\'s stock turns over in ' + left + '. Everything sold here is hot: buying raises your heat.</p>' + heatWarn +
+    return h + '<p style="color:var(--muted);margin-bottom:' + (isPhone() ? '8' : '12') + 'px;font-size:' + (isPhone() ? '13' : '15') + 'px">Cash ' + money(d.cash_minor) + ' · Heat ' + d.heat + ' · stock turns over in ' + left + (isPhone() ? '.' : '. Everything sold here is hot: buying raises your heat.') + '</p>' + heatWarn +
       '<div class="grid g3">' + d.offers.map(ugCard).join('') + '</div>';
   }
   document.addEventListener('click', (e) => {
