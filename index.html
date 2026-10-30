@@ -716,9 +716,9 @@ const MOB = (function () {
       description: 'Gauze, iodine and a tin of aspirin. Patches you up without a doctor asking questions.' },
     { id: 'energy-meal', name: 'Energy Meal', category: 'Everyday', kind: 'consumable', stackable: true, slot: null, rarity: 'Common', priceMinor: D(8), rankReq: 'newcomer', bonuses: {}, effect: { energy: 30 }, shop: true, art: 'meal',
       description: 'A hot sandwich and a bottle of coffee from the corner lunch counter. Gets you back on your feet.' },
-    { id: 'forged-papers', name: 'Forged Papers', category: 'Everyday', kind: 'consumable', stackable: true, slot: null, rarity: 'Rare', priceMinor: D(60), rankReq: 'trusted_associate', bonuses: {}, effect: { heat: 35 }, shop: false, art: 'notebook',
+    { id: 'forged-papers', name: 'Forged Papers', category: 'Everyday', kind: 'consumable', stackable: true, slot: null, rarity: 'Rare', priceMinor: D(60), rankReq: 'trusted_associate', bonuses: {}, effect: { heat: 35 }, shop: false, art: 'forgedpapers',
       description: 'A new name, a new address and a stamp that almost matches the real one. Sold only in the Underground. Cuts the heat on you when used.' },
-    { id: 'whiskey-case', name: 'Case of Bootleg Whiskey', category: 'Everyday', kind: 'consumable', stackable: true, slot: null, rarity: 'Uncommon', priceMinor: D(45), rankReq: 'trusted_associate', bonuses: {}, effect: { energy: 45 }, shop: false, art: 'meal',
+    { id: 'whiskey-case', name: 'Case of Bootleg Whiskey', category: 'Everyday', kind: 'consumable', stackable: true, slot: null, rarity: 'Uncommon', priceMinor: D(45), rankReq: 'trusted_associate', bonuses: {}, effect: { energy: 45 }, shop: false, art: 'whiskeycase',
       description: 'Twelve bottles of something that is definitely not tea. Sold only in the Underground. One bottle puts the fire back in you.' },
     { id: 'pocket-watch', name: 'Pocket Watch', category: 'Everyday', kind: 'gear', slot: 'accessory', rarity: 'Uncommon', priceMinor: D(25), rankReq: 'newcomer', bonuses: { intelligence: 1 }, shop: true, art: 'watch',
       description: 'A plain brass watch that keeps good time. Punctual men are trusted men.' },
@@ -732,7 +732,7 @@ const MOB = (function () {
       description: 'Engraved with someone else\'s initials. Offering a smoke opens a lot of doors.' },
     { id: 'reinforced-overcoat', name: 'Reinforced Overcoat', category: 'Clothing', kind: 'gear', slot: 'outerwear', rarity: 'Rare', priceMinor: D(55), rankReq: 'associate', bonuses: { health: 20, charisma: 1 }, shop: true, art: 'overcoat',
       description: 'Heavy charcoal wool with a lining of stitched canvas. It stops a knife, and sometimes more.' },
-    { id: 'pinstripe-suit', name: 'Pinstripe Three-Piece', category: 'Clothing', kind: 'gear', slot: 'outfit', rarity: 'Rare', priceMinor: D(85), rankReq: 'trusted_associate', bonuses: { charisma: 3 }, shop: true, art: 'pinstripe',
+    { id: 'pinstripe-suit', name: 'Pinstripe Three-Piece', category: 'Clothing', kind: 'gear', slot: 'outfit', rarity: 'Rare', priceMinor: D(85), rankReq: 'trusted_associate', bonuses: { charisma: 3 }, shop: true, art: 'pinstripe3',
       description: 'Cut by a tailor on Taylor Street who asks no questions. This is what success is supposed to look like.' },
     { id: 'colt-police-positive', name: 'Colt Police Positive', category: 'Weapons', kind: 'gear', slot: 'weapon', rarity: 'Common', priceMinor: D(75), rankReq: 'runner', bonuses: { accuracy: 2 }, combat: { acc: 0.03, dmg: 2 }, shop: true, art: 'revolver', photoNote: true, historical: 'PARTIAL: second-issue model confirmed in production in 1931 from secondary sources; caliber and barrel length pending',
       description: 'A blued .38 revolver with a worn black grip. It has outlived two owners, and men still go quiet when they see it.' },
@@ -747,9 +747,9 @@ const MOB = (function () {
     { id: 'thompson-1921', name: 'Thompson Model 1921', category: 'Weapons', kind: 'gear', slot: 'weapon', rarity: 'Epic', priceMinor: D(450), rankReq: 'enforcer', bonuses: { strength: 4, accuracy: 2 }, combat: { acc: 0.04, dmg: 7 }, shop: true, art: 'tommy', historical: 'PARTIAL: Model 1921 confirmed as civilian-available around 1931 from secondary sources; the game price is a balance value, not the historical price',
       description: 'The Chicago typewriter. A drum magazine, a walnut stock and a reputation that walks into the room first.' },
     // Status purchases (money sinks, added after the economy audit). All values PROVISIONAL and unapproved.
-    { id: 'homburg-hat', name: 'Homburg Hat', category: 'Clothing', kind: 'gear', slot: 'head', rarity: 'Rare', priceMinor: D(200), rankReq: 'enforcer', bonuses: { charisma: 2 }, shop: true, art: 'fedora',
+    { id: 'homburg-hat', name: 'Homburg Hat', category: 'Clothing', kind: 'gear', slot: 'head', rarity: 'Rare', priceMinor: D(200), rankReq: 'enforcer', bonuses: { charisma: 2 }, shop: true, art: 'homburg',
       description: 'Stiff felt with a dented crown and a silk band. Men in the back booths wear them, and men at the front tables notice.' },
-    { id: 'gold-pocket-watch', name: 'Gold Pocket Watch', category: 'Everyday', kind: 'gear', slot: 'accessory', rarity: 'Epic', priceMinor: D(350), rankReq: 'lieutenant', bonuses: { charisma: 2, intelligence: 1 }, shop: true, art: 'watch',
+    { id: 'gold-pocket-watch', name: 'Gold Pocket Watch', category: 'Everyday', kind: 'gear', slot: 'accessory', rarity: 'Epic', priceMinor: D(350), rankReq: 'lieutenant', bonuses: { charisma: 2, intelligence: 1 }, shop: true, art: 'goldwatch',
       description: 'Heavy gold on a chain, engraved on the inside by a jeweler who never learned your name. It says you are expected on time and paid on time.' },
     { id: 'camel-hair-overcoat', name: 'Camel-Hair Overcoat', category: 'Clothing', kind: 'gear', slot: 'outerwear', rarity: 'Epic', priceMinor: D(600), rankReq: 'capo', bonuses: { health: 25, charisma: 2 }, shop: true, art: 'overcoat',
       description: 'A long, soft coat with a wide collar and a lining that cost more than the coat. It tells a room how the evening will go.' },
@@ -2392,12 +2392,13 @@ const ART = (function () {
     pl_01: 1, pl_02: 1, pl_03: 1, pl_04: 1, pl_05: 1, pl_06: 1,
     region_loop: 1, region_near_north: 1, region_south_side: 1, region_riverfront: 1, region_west_side: 1,
     item_colt_police_positive: 1, item_winchester_1897: 1, item_colt_m1911: 1,
-    item_colt_official_police: 1, item_sw_38_military_police: 1, biz_restaurant: 1, biz_jazz_club: 1, biz_warehouse: 1, biz_trading_office: 1 };
-  const SMALL = { npc_frankie: 1, pl_01: 1, pl_02: 1, pl_03: 1, pl_04: 1, pl_05: 1, pl_06: 1, item_colt_police_positive: 1, item_winchester_1897: 1, item_colt_m1911: 1, item_colt_official_police: 1, item_sw_38_military_police: 1 };
+    item_colt_official_police: 1, item_sw_38_military_police: 1, item_forged_papers: 1, item_whiskey_case: 1, item_homburg_hat: 1, item_pinstripe_suit: 1, item_gold_pocket_watch: 1, biz_restaurant: 1, biz_jazz_club: 1, biz_warehouse: 1, biz_trading_office: 1 };
+  const SMALL = { npc_frankie: 1, pl_01: 1, pl_02: 1, pl_03: 1, pl_04: 1, pl_05: 1, pl_06: 1, item_colt_police_positive: 1, item_winchester_1897: 1, item_colt_m1911: 1, item_colt_official_police: 1, item_sw_38_military_police: 1, item_forged_papers: 1, item_whiskey_case: 1, item_homburg_hat: 1, item_pinstripe_suit: 1, item_gold_pocket_watch: 1 };
   const PORTRAIT_PHOTO = { 0: 'pl_01', 1: 'pl_02', 2: 'pl_03', 3: 'pl_04', 4: 'pl_05', 5: 'pl_06' };      // portrait slot index -> photo id
   const DISTRICT_PHOTO = { 'the-loop': 'region_loop', 'near-north': 'region_near_north', 'south-side': 'region_south_side', riverfront: 'region_riverfront', 'west-side': 'region_west_side' };
-  const ITEM_PHOTO = { revolver: 'item_colt_police_positive', shotgun: 'item_winchester_1897', pistol: 'item_colt_m1911', officialpolice: 'item_colt_official_police', mp38: 'item_sw_38_military_police' };
-  const ITEM_ALT = { officialpolice: 'A blued Colt Official Police revolver with black grips on dark felt', mp38: 'A blued Smith & Wesson Military & Police revolver with walnut grips on dark felt', revolver: 'A blued Colt double-action revolver on dark felt', shotgun: 'A pump-action Winchester shotgun with a walnut stock on dark felt', pistol: 'A Colt 1911 pistol with checkered walnut grips on dark felt' };
+  const ITEM_PHOTO = { revolver: 'item_colt_police_positive', shotgun: 'item_winchester_1897', pistol: 'item_colt_m1911', officialpolice: 'item_colt_official_police', mp38: 'item_sw_38_military_police', forgedpapers: 'item_forged_papers', whiskeycase: 'item_whiskey_case', homburg: 'item_homburg_hat', pinstripe3: 'item_pinstripe_suit', goldwatch: 'item_gold_pocket_watch' };
+  const ITEM_FALLBACK = { forgedpapers: 'notebook', whiskeycase: 'meal', homburg: 'fedora', pinstripe3: 'pinstripe', goldwatch: 'watch' };
+  const ITEM_ALT = { officialpolice: 'A blued Colt Official Police revolver with black grips on dark felt', mp38: 'A blued Smith & Wesson Military & Police revolver with walnut grips on dark felt', revolver: 'A blued Colt double-action revolver on dark felt', shotgun: 'A pump-action Winchester shotgun with a walnut stock on dark felt', pistol: 'A Colt 1911 pistol with checkered walnut grips on dark felt', forgedpapers: 'A stack of aged identity papers with a rubber stamp, a paper clip and a fountain pen on dark felt', whiskeycase: 'A rough wooden crate of unlabelled brown bottles packed in straw', homburg: 'A grey felt homburg hat with a dark ribbon band on dark felt', pinstripe3: 'A charcoal pinstripe double-breasted three-piece suit on a tailor\'s table', goldwatch: 'A gold hunter-case pocket watch with a chain on dark felt' };
   const fallbacks = {};
   const attr = (s) => String(s).replace(/"/g, '&quot;');
   function photo(id, o) {
@@ -2421,7 +2422,7 @@ const ART = (function () {
     : districtVector(VEC_KEY[key] || key);
   const itemHasPhoto = (k) => !!ITEM_PHOTO[k];
   const itemArt = (k, size) => ITEM_PHOTO[k]
-    ? photo(ITEM_PHOTO[k], { cls: 'item-photo', alt: ITEM_ALT[k] || '', small: size < 100, fbKey: 'i:' + k + ':' + size, fallback: itemIcon(k === 'shotgun' ? 'tommy' : k === 'pistol' ? 'revolver' : k, size) })
+    ? photo(ITEM_PHOTO[k], { cls: 'item-photo', alt: ITEM_ALT[k] || '', small: size < 100, fbKey: 'i:' + k + ':' + size, fallback: itemIcon(ITEM_FALLBACK[k] || (k === 'shotgun' ? 'tommy' : k === 'pistol' ? 'revolver' : k), size) })
     : itemIcon(k, size);
   const shopSign = () => photo('bg_shop_counter', { cls: 'fill', alt: 'A cramped back-room shop counter with green felt under a single bare bulb', fbKey: 'shop', fallback: shopVector() });
   /* business photos: biz_*.webp, 16:9. Until one exists the card shows a plainly labeled TEMP ART slot, never a fake finished picture. */
