@@ -716,6 +716,10 @@ const MOB = (function () {
       description: 'Gauze, iodine and a tin of aspirin. Patches you up without a doctor asking questions.' },
     { id: 'energy-meal', name: 'Energy Meal', category: 'Everyday', kind: 'consumable', stackable: true, slot: null, rarity: 'Common', priceMinor: D(8), rankReq: 'newcomer', bonuses: {}, effect: { energy: 30 }, shop: true, art: 'meal',
       description: 'A hot sandwich and a bottle of coffee from the corner lunch counter. Gets you back on your feet.' },
+    { id: 'forged-papers', name: 'Forged Papers', category: 'Everyday', kind: 'consumable', stackable: true, slot: null, rarity: 'Rare', priceMinor: D(60), rankReq: 'trusted_associate', bonuses: {}, effect: { heat: 35 }, shop: false, art: 'notebook',
+      description: 'A new name, a new address and a stamp that almost matches the real one. Sold only in the Underground. Cuts the heat on you when used.' },
+    { id: 'whiskey-case', name: 'Case of Bootleg Whiskey', category: 'Everyday', kind: 'consumable', stackable: true, slot: null, rarity: 'Uncommon', priceMinor: D(45), rankReq: 'trusted_associate', bonuses: {}, effect: { energy: 45 }, shop: false, art: 'meal',
+      description: 'Twelve bottles of something that is definitely not tea. Sold only in the Underground. One bottle puts the fire back in you.' },
     { id: 'pocket-watch', name: 'Pocket Watch', category: 'Everyday', kind: 'gear', slot: 'accessory', rarity: 'Uncommon', priceMinor: D(25), rankReq: 'newcomer', bonuses: { intelligence: 1 }, shop: true, art: 'watch',
       description: 'A plain brass watch that keeps good time. Punctual men are trusted men.' },
     { id: 'contact-card', name: 'Contact Card', category: 'Everyday', kind: 'misc', slot: null, rarity: 'Uncommon', priceMinor: D(30), rankReq: 'runner', bonuses: {}, shop: true, art: 'card',
@@ -1533,14 +1537,16 @@ const MOB = (function () {
     const eff = it.effect || {};
     if (eff.health && state.player.health >= maxHealth(state)) return { ok: false, error: 'You are already in fighting shape.' };
     if (eff.energy && state.player.energy >= CONFIG.maxEnergy) return { ok: false, error: 'You are not tired.' };
+    if (eff.heat && state.player.heat <= 0) return { ok: false, error: 'Nobody is looking for you.' };
     const s = clone(state);
     if (eff.health) s.player.health = Math.min(maxHealth(s), s.player.health + eff.health);
     if (eff.energy) s.player.energy = Math.min(CONFIG.maxEnergy, s.player.energy + eff.energy);
+    if (eff.heat) s.player.heat = Math.max(0, s.player.heat - eff.heat);
     s.inventory[it.id] -= 1;
     if (s.inventory[it.id] <= 0) delete s.inventory[it.id];
     pushActivity(s, 'Used ' + it.name + '.', 'equip', now);
     normalize(s);
-    return { ok: true, state: s, message: 'Used ' + it.name + (eff.health ? '. +' + eff.health + ' health' : eff.energy ? '. +' + eff.energy + ' energy' : '') + '.' };
+    return { ok: true, state: s, message: 'Used ' + it.name + (eff.health ? '. +' + eff.health + ' health' : eff.energy ? '. +' + eff.energy + ' energy' : eff.heat ? '. -' + eff.heat + ' heat' : '') + '.' };
   }
 
   function patchUp(state, now) {
@@ -2499,6 +2505,7 @@ const ART = (function () {
     { id: 'crew', label: 'Crew', icon: 'shield' },
     { id: 'territory', label: 'Territory', icon: 'crown' },
     { id: 'titles', label: 'Titles', icon: 'award' },
+    { id: 'underground', label: 'Underground', icon: 'lock', gate: true },
     { id: 'rankings', label: 'Rankings', icon: 'trophy' },
     { id: 'profile', label: 'Profile', icon: 'user' },
     { id: 'settings', label: 'Settings', icon: 'sliders', hidden: true },
@@ -2579,7 +2586,7 @@ const ART = (function () {
     $('#sidebar').innerHTML =
       '<div class="brand"><div class="brand-mark">M<span>O</span>B</div><div class="brand-sub">The Underworld</div></div>' +
       '<nav class="nav" aria-label="Pages">' +
-      ROUTES.filter((r) => !r.hidden).map((r) => '<button data-act="nav" data-route="' + r.id + '"' + (ui.route === r.id ? ' aria-current="page"' : '') + '>' + icon(r.icon, 19) + '<span>' + r.label + '</span>' + (r.id === 'crew' ? crewDot() : '') + '</button>').join('') +
+      ROUTES.filter((r) => !r.hidden && (!r.gate || (cloud.on && ugRankOk()))).map((r) => '<button data-act="nav" data-route="' + r.id + '"' + (ui.route === r.id ? ' aria-current="page"' : '') + '>' + icon(r.icon, 19) + '<span>' + r.label + '</span>' + (r.id === 'crew' ? crewDot() : '') + '</button>').join('') +
       '</nav>' +
       '<div class="side-user"><div class="frame" style="padding:2px;border-width:1px">' + portrait(p.portrait, 44) + '</div><div class="who"><b>' + esc(p.name) + '</b><span>' + esc(rank) + '</span></div>' +
       '<button class="icon-btn" data-act="nav" data-route="settings" aria-label="Settings"' + (ui.route === 'settings' ? ' aria-current="page"' : '') + '>' + icon('sliders', 18) + '</button></div>';
@@ -3199,7 +3206,7 @@ const ART = (function () {
     else if (owned && it.slot) actions = '<button class="btn" data-act="equip" data-id="' + it.id + '"' + (low ? ' disabled' : '') + '>' + (low ? 'Requires ' + esc(MOB.rankName(it.rankReq)) : 'Equip') + '</button>';
     else if (owned) actions = '<button class="btn ghost" data-act="close-modal">Keep it safe</button>';
     else actions = '<button class="btn" data-act="goto-shop" data-id="' + it.id + '">' + (it.shop ? 'Find it in the shop' : 'Not for sale') + '</button>';
-    const effects = it.effect ? '<span class="bonus">' + (it.effect.health ? '+' + it.effect.health + ' Health when used' : '+' + it.effect.energy + ' Energy when used') + '</span>' : '';
+    const effects = it.effect ? '<span class="bonus">' + (it.effect.health ? '+' + it.effect.health + ' Health when used' : it.effect.heat ? '-' + it.effect.heat + ' Heat when used' : '+' + it.effect.energy + ' Energy when used') + '</span>' : '';
     return '<div class="modal-back" data-act="backdrop"><div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="im-title" tabindex="-1"><div class="modal-head"><div><div class="eyebrow">' + it.category + ' · ' + (it.slot ? MOB.SLOT_LABEL[it.slot] + ' slot' : it.kind === 'consumable' ? 'Consumable' : 'Everyday item') + '</div><h2 id="im-title">' + esc(it.name) + '</h2></div><button class="icon-btn" data-act="close-modal" aria-label="Close">' + icon('x', 18) + '</button></div>' +
       '<div class="modal-body"><div class="detail-art ' + (ART.itemHasPhoto(it.art) ? 'has-photo' : 'temp-art') + '">' + ART.itemArt(it.art, 120) + '</div>' + (ART.itemHasPhoto(it.art) ? '<p class="photo-note">Reference photo is AI-generated. The exact model variant is not yet verified.</p>' : '') +
       '<p style="font-family:var(--font-head);font-size:19px;color:#e6dcc3;line-height:1.4">' + esc(it.description) + '</p>' +
@@ -3251,7 +3258,7 @@ const ART = (function () {
   }
 
   /* ---------- render ---------- */
-  const PAGES = { dashboard: pageDashboard, jobs: pageJobs, city: pageCity, inventory: pageInventory, shop: pageShop, businesses: pageBusinesses, crew: pageCrew, territory: pageTerritory, titles: pageTitles, rankings: pageRankings, profile: pageProfile, settings: pageSettings };
+  const PAGES = { dashboard: pageDashboard, jobs: pageJobs, city: pageCity, inventory: pageInventory, shop: pageShop, businesses: pageBusinesses, crew: pageCrew, territory: pageTerritory, underground: pageUnderground, titles: pageTitles, rankings: pageRankings, profile: pageProfile, settings: pageSettings };
   function render() {
     renderSidebar(); renderTopbar(); renderTabbar();
     const view = $('#view');
@@ -3262,7 +3269,7 @@ const ART = (function () {
     applyPaging();
     renderModal();
     animateBars();
-    const names = { dashboard: 'Dashboard', jobs: 'Job Board', city: 'City', inventory: 'Inventory', shop: 'Equipment Shop', businesses: 'Businesses', crew: 'Crew', territory: 'Territory', titles: 'Titles', rankings: 'Rankings', profile: 'Profile', settings: 'Settings' };
+    const names = { dashboard: 'Dashboard', jobs: 'Job Board', city: 'City', inventory: 'Inventory', shop: 'Equipment Shop', businesses: 'Businesses', crew: 'Crew', territory: 'Territory', underground: 'Underground', titles: 'Titles', rankings: 'Rankings', profile: 'Profile', settings: 'Settings' };
     document.title = names[ui.route] + ' · MOB: The Underworld';
   }
 
@@ -3682,7 +3689,7 @@ const ART = (function () {
       case 'buyItem': next.stats.purchases += 1; log('Bought ' + item(p.itemId) + ' for ' + money(r.price_minor) + '.', 'shop'); return { message: item(p.itemId) + ' added to your inventory.' };
       case 'equipItem': log('Equipped ' + item(p.itemId) + '.'); return { message: item(p.itemId) + ' equipped.' };
       case 'unequipItem': { const n = item(prev.equipped[p.slot]); log('Unequipped ' + n + '.'); return { message: n + ' unequipped.' }; }
-      case 'useItem': { const e = (MOB.ITEM_BY_ID[p.itemId] || {}).effect || {}; log('Used ' + item(p.itemId) + '.'); return { message: 'Used ' + item(p.itemId) + (e.health ? '. +' + e.health + ' health' : e.energy ? '. +' + e.energy + ' energy' : '') + '.' }; }
+      case 'useItem': { const e = (MOB.ITEM_BY_ID[p.itemId] || {}).effect || {}; log('Used ' + item(p.itemId) + '.'); return { message: 'Used ' + item(p.itemId) + (e.health ? '. +' + e.health + ' health' : e.energy ? '. +' + e.energy + ' energy' : e.heat ? '. -' + e.heat + ' heat' : '') + '.' }; }
       case 'travel': { const d = MOB.DISTRICT_BY_ID[p.districtId]; log('Traveled to ' + d.name + '.', 'event'); return { message: 'Welcome to ' + d.name + '.' }; }
       case 'buyBusiness': log('Bought the ' + biz.name + ' for ' + money(r.price_minor) + '.', 'shop'); next.stats.purchases += 1; return { message: 'You now own the ' + biz.name + '.' };
       case 'collectBusiness': log('Collected ' + money(r.net_minor) + ' from the ' + biz.name + '.', 'shop'); return { message: 'Collected ' + money(r.net_minor) + ' from the ' + biz.name + '.' };
@@ -4217,6 +4224,76 @@ const ART = (function () {
     else if (a === 'terr-cancel') { terrUi.ask = null; render(); }
     else if (a === 'terr-confirm') terrCall(t.dataset.kind === 'claim' ? 'game_territory_claim' : 'game_territory_declare_war', { p_district: id }, (r) => (t.dataset.kind === 'claim' ? 'Your crew now rules the district.' : 'War declared. It ends in ' + leftText(r.ends_at) + '.'));
     else if (a === 'terr-release') terrCall('game_territory_release', {}, () => 'Your crew gave up the district.');
+  });
+
+  /* ---------- the Underground: hidden black market (online only, rank gated) ---------- */
+  const ugUi = { data: null, at: 0, loading: false, err: '', loadedFor: null, ask: null };
+  const UG_MIN_RANK = 'trusted_associate';
+  const ugRankOk = () => MOB.playerRankIdx(S) >= MOB.RANK_IDX[UG_MIN_RANK];
+  async function loadUnderground(quiet) {
+    if (!cloud.on) return;
+    if (!quiet) { ugUi.loading = true; render(); }
+    try { const r = await rpc('game_underground'); ugUi.data = r.ok ? r : null; ugUi.err = r.ok ? '' : (r.error || 'Could not reach the back room.'); ugUi.at = Date.now(); ugUi.loadedFor = cloud.session && cloud.session.email; }
+    catch (e) {
+      if (e.signedOut) { showAuth(friendly(e)); return; }
+      ugUi.err = (e.status === 404 || /could not find|function/i.test(e.message || '')) ? 'The Underground needs the latest database update (migration 0019). Ask whoever runs the game to install it.' : friendly(e);
+    } finally { ugUi.loading = false; if (ui.route === 'underground') render(); }
+  }
+  async function ugBuy(offerId) {
+    if (cloud.busy) return;
+    cloud.busy = true; document.body.classList.add('busy'); ugUi.ask = null;
+    try {
+      const r = await rpc('game_underground_buy', { p_key: newKey(), p_offer_id: offerId });
+      if (!r || !r.ok) toast((r && r.error) || 'That did not work.', 'error');
+      else toast('Bought. ' + (r.heat_added ? '+' + r.heat_added + ' heat.' : ''), 'success');
+      if (typeof cloudRefresh === 'function') await cloudRefresh(true);
+      await loadUnderground(true);
+    } catch (e) { if (e.signedOut) showAuth(friendly(e)); else toast(friendly(e), 'error'); }
+    finally { cloud.busy = false; document.body.classList.remove('busy'); render(); }
+  }
+  function ugCard(o) {
+    const it = MOB.ITEM_BY_ID[o.item_id]; const ask = ugUi.ask === o.offer_id;
+    const left = o.daily_limit - o.bought_today, cash = ugUi.data.cash_minor;
+    let why = '';
+    if (!o.rank_ok) why = 'Needs the rank of ' + MOB.RANKS[MOB.RANK_IDX[o.min_rank]].name + '.';
+    else if (left <= 0) why = 'Sold out for today.';
+    else if (cash < o.price_minor) why = 'You are short.';
+    else if (it && !it.stackable && o.owned >= 1) why = 'You already own one.';
+    const art = it ? '<div class="art ' + (ART.itemHasPhoto(it.art) ? 'has-photo' : 'temp-art') + '">' + ART.itemArt(it.art, 64) + '</div>' : '';
+    return '<article class="card item" style="display:grid;gap:8px;padding:14px">' + art +
+      '<h3>' + esc(o.name) + '</h3>' +
+      '<div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase" class="rar-' + (it ? it.rarity : 'Common') + '">' + (it ? it.rarity : '') + (o.always ? ' · always in stock' : ' · tonight only') + '</div>' +
+      (it ? '<p style="color:var(--muted);font-size:13.5px">' + esc(it.description) + '</p>' : '') +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:13.5px"><b>' + money(o.price_minor) + '</b><span style="color:var(--heat,#d9822b)">+' + o.heat_on_buy + ' heat</span><span style="color:var(--muted)">' + left + ' of ' + o.daily_limit + ' left today</span>' + (o.owned ? '<span style="color:var(--muted)">You have ' + o.owned + '</span>' : '') + '</div>' +
+      (why ? '<div style="color:var(--muted);font-size:13px">' + esc(why) + '</div>'
+        : ask ? '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="ug-confirm" data-id="' + o.offer_id + '">Pay ' + money(o.price_minor) + ' (+' + o.heat_on_buy + ' heat)</button><button class="btn ghost sm" data-act="ug-cancel">Cancel</button></div>'
+        : '<div><button class="btn" data-act="ug-ask" data-id="' + o.offer_id + '">Buy</button></div>') + '</article>';
+  }
+  function pageUnderground() {
+    const h = head('Back room', 'The Underground', 'No sign on the door. Hot goods, no questions, and a price for the silence.');
+    if (!cloud.on) {
+      return h + '<section class="card" style="padding:20px;display:grid;gap:10px"><h3 style="font-size:22px">Sign in to find the back room</h3><p style="color:var(--muted)">The Underground only exists in the online game.</p>' +
+        (CLOUD_ENABLED ? '<div><button class="btn" data-act="go-online">Go online</button></div>' : '') + '</section>';
+    }
+    if (!ugRankOk()) return h + '<section class="card" style="padding:20px"><h3 style="font-size:20px">Nobody is talking</h3><p style="color:var(--muted)">Make a name first. Reach <b>' + MOB.RANKS[MOB.RANK_IDX[UG_MIN_RANK]].name + '</b> and somebody will find you.</p></section>';
+    if (ugUi.loadedFor !== (cloud.session && cloud.session.email) && !ugUi.loading) setTimeout(() => loadUnderground(), 0);
+    else if (Date.now() - ugUi.at > 8000 && !ugUi.loading && !cloud.busy) setTimeout(() => loadUnderground(true), 0);
+    if (ugUi.err) return h + '<section class="card" style="padding:18px"><p>' + esc(ugUi.err) + '</p><button class="btn sm" data-act="ug-reload">Try again</button></section>';
+    if (!ugUi.data) return h + '<p style="color:var(--muted)">Loading…</p>';
+    const d = ugUi.data;
+    if (!d.open) return h + '<section class="card" style="padding:20px"><p style="color:var(--muted)">Make a name first. Reach <b>' + esc(d.need_rank_name) + '</b>.</p></section>';
+    const left = (typeof leftText === 'function') ? leftText(d.refresh_at) : '';
+    const heatWarn = d.heat >= 70 ? '<div class="card" style="padding:12px;border-color:var(--danger,#b5402f)"><b>You are running hot (' + d.heat + ').</b> Everything here adds more. Use Forged Papers or lie low.</div>' : '';
+    return h + '<p style="color:var(--muted);margin-bottom:12px">Cash ' + money(d.cash_minor) + ' · Heat ' + d.heat + ' · Tonight\'s stock turns over in ' + left + '. Everything sold here is hot: buying raises your heat.</p>' + heatWarn +
+      '<div class="grid g3">' + d.offers.map(ugCard).join('') + '</div>';
+  }
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-act^="ug-"]'); if (!t || !cloud.on) return;
+    const a = t.dataset.act, id = t.dataset.id;
+    if (a === 'ug-reload') { ugUi.err = ''; loadUnderground(); }
+    else if (a === 'ug-ask') { ugUi.ask = id; render(); }
+    else if (a === 'ug-cancel') { ugUi.ask = null; render(); }
+    else if (a === 'ug-confirm') ugBuy(id);
   });
   /* ---------- background music ----------
      Original music made live in the browser (Web Audio): a slow, smoky minor-key swing in C minor with brushed ride,
