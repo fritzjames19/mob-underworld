@@ -2614,7 +2614,7 @@ const ART = (function () {
       '<button class="icon-btn menu-btn" data-act="drawer-open" aria-label="Open navigation">' + icon('menu', 20) + crewDot() + '</button>' +
       '<div class="district-chip" title="Current district">' + icon('pin', 16) + '<span>' + esc(d.name) + '</span></div>' +
       '<div class="spacer"></div>' +
-      '<div class="cash meter-chip" aria-label="Energy ' + p.energy + ' of ' + MOB.CONFIG.maxEnergy + '" title="Energy">' + icon('bolt', 16) + '<span class="num">' + p.energy + '</span></div>' +
+      '<button class="cash meter-chip" data-act="open-supplies" aria-label="Energy ' + p.energy + ' of ' + MOB.CONFIG.maxEnergy + '. Open quick supplies" title="Quick supplies: buy and use health, energy and heat items">' + icon('bolt', 16) + '<span class="num">' + p.energy + '</span><span aria-hidden="true" style="margin-left:2px;font-weight:700">+</span></button>' +
       '<div class="cash" aria-label="Cash">' + icon('dollar', 16) + '<span class="num">' + money(p.cashMinor) + '</span></div>' +
       '<div class="pop-wrap"><button class="icon-btn" data-act="pop-bell" aria-label="Notifications' + (unread ? ', ' + unread + ' new' : '') + '" aria-expanded="' + (ui.pop === 'bell') + '">' + icon('bell', 18) + (unread ? '<span class="badge-dot">' + (unread > 9 ? '9+' : unread) + '</span>' : '') + '</button>' +
       (ui.pop === 'bell' ? '<div class="popover" role="dialog" aria-label="Recent activity"><h4>Word on the street</h4>' + recent.map((a) => '<div class="pop-item"><div>' + esc(a.text) + '<time>' + (a.kind === 'demo' ? 'Demo event' : ago(a.ts)) + '</time></div></div>').join('') + '</div>' : '') + '</div>' +
@@ -3247,7 +3247,7 @@ const ART = (function () {
     syncModalHistory();
     const root = $('#modal-root');
     if (!ui.modal) { root.innerHTML = ''; lastModalKey = null; return; }
-    const html = ui.modal.type === 'mission' ? missionModal() : ui.modal.type === 'item' ? itemModal() : ui.modal.type === 'profile' ? profileModal() : ui.modal.type === 'player' ? playerModal() : ui.modal.type === 'titlerec' ? titleRecModal() : ui.modal.type === 'fight' ? fightModal() : resetModal();
+    const html = ui.modal.type === 'mission' ? missionModal() : ui.modal.type === 'item' ? itemModal() : ui.modal.type === 'profile' ? profileModal() : ui.modal.type === 'player' ? playerModal() : ui.modal.type === 'supplies' ? suppliesModal() : ui.modal.type === 'titlerec' ? titleRecModal() : ui.modal.type === 'fight' ? fightModal() : resetModal();
     const key = modalKey();
     const prevScroll = root.querySelector('.modal') ? root.querySelector('.modal').scrollTop : 0;
     root.innerHTML = html;
@@ -3366,6 +3366,7 @@ const ART = (function () {
         if (!res.ok) { toast(res.error, 'error'); break; }
         ui.modal = { type: 'fight', result: null }; commit(res.state); toast(res.message, 'success'); break;
       }
+      case 'open-supplies': ui.modal = { type: 'supplies' }; render(); break;
       case 'open-fight': ui.modal = { type: 'fight', result: null }; renderModal(); break;
       case 'fight-act': {
         const params = { action: t.dataset.do }; if (t.dataset.item) params.itemId = t.dataset.item;
@@ -4315,6 +4316,28 @@ const ART = (function () {
     else if (a === 'ug-cancel') { ugUi.ask = null; render(); }
     else if (a === 'ug-confirm') ugBuy(id);
   });
+
+  /* ---------- Quick Supplies: buy and use consumables from any page (tap the energy chip) ---------- */
+  function suppliesModal() {
+    const p = S.player, eff = MOB.effective(S), maxH = eff.maxHealth || MOB.CONFIG.maxHealth, ri = MOB.playerRankIdx(S);
+    const cons = MOB.ITEMS.filter((i) => i.kind === 'consumable' && (i.shop || (S.inventory[i.id] || 0) > 0 || (i.id === 'forged-papers' || i.id === 'whiskey-case') && cloud.on && ri >= MOB.RANK_IDX[i.rankReq]));
+    const stat = (label, val, max) => '<div style="display:grid;gap:3px;min-width:0"><small style="letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-size:11px">' + label + '</small><b class="num">' + val + (max ? ' / ' + max : '') + '</b></div>';
+    const rows = cons.map((it) => {
+      const qty = S.inventory[it.id] || 0, e = it.effect || {}, atMax = qty >= MOB.CONFIG.maxStack;
+      const what = (e.health ? '+' + e.health + ' health' : '') + (e.energy ? '+' + e.energy + ' energy' : '') + (e.heat ? '-' + e.heat + ' heat' : '');
+      const useless = (e.health && p.health >= maxH) || (e.energy && p.energy >= MOB.CONFIG.maxEnergy) || (e.heat && p.heat <= 0);
+      let buy = '';
+      if (it.shop) buy = '<button class="btn sm" data-act="buy" data-id="' + it.id + '"' + (atMax ? ' disabled' : '') + '>Buy ' + money(it.priceMinor) + '</button>';
+      else buy = '<button class="btn sm ghost" data-act="nav" data-route="underground">Underground</button>';
+      return '<div class="card" style="padding:10px 12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div style="min-width:0"><b>' + esc(it.name) + '</b>' +
+        '<div style="color:var(--muted);font-size:12.5px">' + what + ' · you have <b class="num" style="color:var(--text,#eee)">' + qty + '</b></div></div>' +
+        '<div style="display:flex;gap:8px;flex:none"><button class="btn sm ghost" data-act="use-item" data-id="' + it.id + '"' + (qty < 1 || useless ? ' disabled' : '') + '>Use</button>' + buy + '</div></div>';
+    }).join('');
+    return '<div class="modal-back" data-act="backdrop"><div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="sp-title" tabindex="-1"><div class="modal-head"><div><div class="eyebrow">Without leaving the page</div><h2 id="sp-title">Quick Supplies</h2></div>' +
+      '<button class="icon-btn" data-act="close-modal" aria-label="Close">' + icon('x', 18) + '</button></div><div class="modal-body" style="display:grid;gap:12px">' +
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">' + stat('Health', p.health, maxH) + stat('Energy', p.energy, MOB.CONFIG.maxEnergy) + stat('Heat', p.heat, 100) + stat('Cash', money(p.cashMinor)) + '</div>' +
+      rows + '<p style="color:var(--muted);font-size:12.5px">Tap Use to drink, eat or burn it now. Buying takes cash straight away, just like the Equipment Shop.</p></div></div></div>';
+  }
   /* ---------- background music ----------
      Original cool jazz made live in the browser (Web Audio), nothing recorded and no licences: a medium swing in C minor over a classic
      ii-V-I minor turnaround (Fm7 Bb7 Ebmaj7 Abmaj7 Dm7b5 G7 Cm7), played by a walking upright bass, brushed ride and hi-hat, a Rhodes-style
