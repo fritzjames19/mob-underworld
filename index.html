@@ -2497,6 +2497,7 @@ const ART = (function () {
     { id: 'shop', label: 'Equipment Shop', icon: 'bag' },
     { id: 'businesses', label: 'Businesses', icon: 'dollar' },
     { id: 'crew', label: 'Crew', icon: 'shield' },
+    { id: 'territory', label: 'Territory', icon: 'crown' },
     { id: 'titles', label: 'Titles', icon: 'award' },
     { id: 'rankings', label: 'Rankings', icon: 'trophy' },
     { id: 'profile', label: 'Profile', icon: 'user' },
@@ -3250,7 +3251,7 @@ const ART = (function () {
   }
 
   /* ---------- render ---------- */
-  const PAGES = { dashboard: pageDashboard, jobs: pageJobs, city: pageCity, inventory: pageInventory, shop: pageShop, businesses: pageBusinesses, crew: pageCrew, titles: pageTitles, rankings: pageRankings, profile: pageProfile, settings: pageSettings };
+  const PAGES = { dashboard: pageDashboard, jobs: pageJobs, city: pageCity, inventory: pageInventory, shop: pageShop, businesses: pageBusinesses, crew: pageCrew, territory: pageTerritory, titles: pageTitles, rankings: pageRankings, profile: pageProfile, settings: pageSettings };
   function render() {
     renderSidebar(); renderTopbar(); renderTabbar();
     const view = $('#view');
@@ -3261,7 +3262,7 @@ const ART = (function () {
     applyPaging();
     renderModal();
     animateBars();
-    const names = { dashboard: 'Dashboard', jobs: 'Job Board', city: 'City', inventory: 'Inventory', shop: 'Equipment Shop', businesses: 'Businesses', crew: 'Crew', titles: 'Titles', rankings: 'Rankings', profile: 'Profile', settings: 'Settings' };
+    const names = { dashboard: 'Dashboard', jobs: 'Job Board', city: 'City', inventory: 'Inventory', shop: 'Equipment Shop', businesses: 'Businesses', crew: 'Crew', territory: 'Territory', titles: 'Titles', rankings: 'Rankings', profile: 'Profile', settings: 'Settings' };
     document.title = names[ui.route] + ' · MOB: The Underworld';
   }
 
@@ -4131,6 +4132,91 @@ const ART = (function () {
       try { const r = await rpc('game_title_record', { p_title_id: id }); if (ui.modal && ui.modal.type === 'titlerec' && ui.modal.id === id) { if (r.ok) ui.modal.data = r; else ui.modal.err = r.error || 'Record not found.'; render(); } }
       catch (er) { if (er.signedOut) { showAuth(friendly(er)); return; } if (ui.modal && ui.modal.type === 'titlerec') { ui.modal.err = friendly(er); render(); } }
     }
+  });
+
+  /* ---------- territory wars (online only) ---------- */
+  const terrUi = { data: null, at: 0, loading: false, err: '', loadedFor: null, ask: null };
+  async function loadTerritory(quiet) {
+    if (!cloud.on) return;
+    if (!quiet) { terrUi.loading = true; render(); }
+    try { const r = await rpc('game_territories'); terrUi.data = r.ok ? r : null; terrUi.err = r.ok ? '' : (r.error || 'Could not load the districts.'); terrUi.at = Date.now(); terrUi.loadedFor = cloud.session && cloud.session.email; }
+    catch (e) {
+      if (e.signedOut) { showAuth(friendly(e)); return; }
+      terrUi.err = (e.status === 404 || /could not find|function/i.test(e.message || '')) ? 'Territory wars need the latest database update (migration 0017). Ask whoever runs the game to install it.' : friendly(e);
+    } finally { terrUi.loading = false; if (ui.route === 'territory') render(); }
+  }
+  async function terrCall(fn, args, okMsg) {
+    if (cloud.busy) return;
+    cloud.busy = true; document.body.classList.add('busy'); terrUi.ask = null;
+    try {
+      const r = await rpc(fn, Object.assign({ p_key: newKey() }, args));
+      if (!r || !r.ok) toast((r && r.error) || 'That did not work.', 'error'); else toast(okMsg(r), 'success');
+      crewUi.at = 0; crewUi.data = null;
+      await loadTerritory(true);
+    } catch (e) { if (e.signedOut) showAuth(friendly(e)); else toast(friendly(e), 'error'); }
+    finally { cloud.busy = false; document.body.classList.remove('busy'); render(); }
+  }
+  const leftText = (ms) => {
+    const m = Math.max(0, Math.round((ms - Date.now()) / 60000));
+    if (m < 60) return m + ' min';
+    const h = Math.floor(m / 60); return h < 48 ? h + ' h ' + (m % 60) + ' min' : Math.floor(h / 24) + ' days';
+  };
+  function warBar(w) {
+    const a = w.attacker.points, d = w.defender.points, tot = Math.max(1, a + d), pa = Math.round((a / tot) * 100);
+    return '<div style="display:grid;gap:4px"><div style="display:flex;justify-content:space-between;gap:8px;font-size:13px"><span><b>' + esc(w.attacker.name) + '</b> ' + a + '</span><span>' + d + ' <b>' + esc(w.defender.name) + '</b></span></div>' +
+      '<div role="img" aria-label="' + esc(w.attacker.name) + ' ' + a + ' points, ' + esc(w.defender.name) + ' ' + d + ' points" style="display:flex;height:12px;background:var(--bg);border:1px solid var(--line);border-radius:3px;overflow:hidden"><div style="width:' + (a + d ? pa : 50) + '%;background:var(--burg-hi)"></div><div style="flex:1;background:var(--gold)"></div></div>' +
+      '<div style="color:var(--muted);font-size:12.5px">Ends in ' + leftText(w.ends_at) + '. Every successful job in this district counts one point for your crew.</div>' +
+      (w.top.length ? '<div style="color:var(--muted);font-size:12.5px">Top: ' + w.top.map((x) => esc(x.name) + ' ' + x.n).join(' · ') + '</div>' : '') + '</div>';
+  }
+  function districtCard(d, cfg) {
+    const mine = d.ruler && terrUi.data.me && d.ruler.id === terrUi.data.me.crew_id;
+    const ruler = d.ruler ? '<div style="font-size:15px">Ruled by <span class="gt c-legendary" style="font-size:15px">' + esc(d.ruler.name) + '</span></div><div style="color:var(--muted);font-size:12.5px">' + d.ruler.members + ' members' + (d.protected_until ? ' · protected for ' + leftText(d.protected_until) : '') + ' · tribute today ' + money(Number(d.tribute_today_minor)) + '</div>'
+      : '<div style="color:var(--muted)">Nobody rules this district. Any crew of ' + cfg.min_members + '+ can claim it.</div>';
+    const ask = terrUi.ask && terrUi.ask.district === d.id ? terrUi.ask : null;
+    let act = '';
+    if (ask) {
+      act = '<div class="notice warn" style="display:grid;gap:8px"><b>' + (ask.kind === 'claim' ? 'Claim ' + esc(d.name) + ' for $' + (cfg.claim_fee_minor / 100) + ' from the treasury?' : 'Declare war for ' + esc(d.name) + '? It costs $' + (cfg.war_fee_minor / 100) + ' from the treasury, not refunded, and lasts ' + cfg.war_hours + ' hours.') + '</b>' +
+        '<div style="display:flex;gap:8px"><button class="btn sm" data-act="terr-confirm" data-id="' + esc(d.id) + '" data-kind="' + ask.kind + '">Yes, do it</button><button class="btn sm ghost" data-act="terr-cancel">Not now</button></div></div>';
+    } else if (d.action.kind === 'claim') act = '<button class="btn sm" data-act="terr-ask" data-id="' + esc(d.id) + '" data-kind="claim">Claim it ($' + (cfg.claim_fee_minor / 100) + ')</button>';
+    else if (d.action.kind === 'declare') act = '<button class="btn sm" data-act="terr-ask" data-id="' + esc(d.id) + '" data-kind="declare">Declare war ($' + (cfg.war_fee_minor / 100) + ')</button>';
+    else if (d.action.kind === 'yours') act = (terrUi.data.me.role === 'leader' && !d.war ? '<button class="btn sm ghost" data-act="terr-release">Give it up</button>' : '');
+    const why = d.action.kind === 'none' && d.action.reason ? '<div style="color:var(--muted);font-size:12.5px">' + esc(d.action.reason) + '</div>' : '';
+    return '<article data-pg="item" class="card" style="padding:14px;display:grid;gap:8px;align-content:start' + (mine ? ';border-color:var(--gold)' : '') + '">' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3 style="font-size:20px">' + esc(d.name) + '</h3>' + (d.war ? '<span class="chip" style="color:#e79aa2">At war</span>' : mine ? '<span class="chip gold">Yours</span>' : '') + '</div>' +
+      ruler + (d.war ? warBar(d.war) : '') + act + why + '</article>';
+  }
+  function pageTerritory() {
+    const h = head('Turf', 'Territory', 'Five districts. One crew rules each. Take one by war, hold it with your jobs.');
+    if (!cloud.on) {
+      return h + '<section class="card" style="padding:20px;display:grid;gap:10px"><h3 style="font-size:22px">Sign in to fight for turf</h3><p style="color:var(--muted)">Territory belongs to crews, and crews live on the game server. Switch to your online account to see who rules the city.</p>' +
+        (CLOUD_ENABLED ? '<div><button class="btn" data-act="go-online">Go online</button></div>' : '') + '</section>';
+    }
+    if (terrUi.loadedFor !== (cloud.session && cloud.session.email) && !terrUi.loading) setTimeout(() => loadTerritory(), 0);
+    else if (Date.now() - terrUi.at > 4000 && !terrUi.loading && !cloud.busy) setTimeout(() => loadTerritory(true), 0);
+    if (terrUi.err) return h + '<section class="card" style="padding:18px"><p>' + esc(terrUi.err) + '</p><button class="btn sm" data-act="terr-reload">Try again</button></section>';
+    if (!terrUi.data) return h + '<p style="color:var(--muted)">Loading…</p>';
+    const d = terrUi.data, cfg = d.config, me = d.me;
+    const order = MOB.DISTRICTS.map((x) => x.id); d.districts.sort((x, y) => order.indexOf(x.id) - order.indexOf(y.id));
+    const rules = '<section class="card" style="padding:14px;display:grid;gap:6px"><h3 style="font-size:18px">How it works</h3><ul style="color:var(--muted);font-size:13.5px;margin-left:18px;display:grid;gap:3px">' +
+      '<li>An officer or the leader claims a free district for $' + (cfg.claim_fee_minor / 100) + ', or declares war on a ruler for $' + (cfg.war_fee_minor / 100) + ' from the crew treasury. A crew needs ' + cfg.min_members + '+ members and rules one district at most.</li>' +
+      '<li>A war lasts ' + cfg.war_hours + ' hours. Every <b>successful job</b> a member finishes in that district scores a point for their crew. Most points wins; a tie goes to the ruler.</li>' +
+      '<li>The ruling crew earns ' + cfg.tribute_pct + '% tribute on every job paid in its district (paid by the house, up to $' + (cfg.tribute_cap_minor / 100) + ' a day) and its members take ' + cfg.heat_shield_pct + '% less heat there. A new ruler is safe for ' + (cfg.protect_hours / 24) + ' days.</li></ul></section>';
+    const mine = me ? '<p style="color:var(--muted);margin-bottom:12px">Your crew: <b>' + esc(me.crew_name) + '</b> · treasury ' + money(Number(me.treasury_minor)) + ' · ' + me.members + ' members' + (me.can_manage ? '' : ' · only officers and the leader can act') + '</p>' : '<p style="color:var(--muted);margin-bottom:12px">You are not in a crew. <a href="#crew" style="color:var(--gold)">Find one</a> to take part.</p>';
+    const hist = d.history.length ? '<h2 class="sec-title">Recent wars</h2><div class="table-wrap"><table class="rank" style="min-width:0"><tbody>' + d.history.map((x) => '<tr data-pg="item"><td style="width:90px;color:var(--muted)">' + ago(x.at) + '</td><td>' + esc(x.district) + '</td><td><b>' + esc(x.winner) + '</b> won (' + esc(x.attacker) + ' ' + x.attacker_points + ' - ' + x.defender_points + ' ' + esc(x.defender) + ')</td></tr>').join('') + '</tbody></table></div>' : '';
+    if (isPhone()) {
+      const sub = curSub('territory', 'map');
+      return h + subTabs('territory', [['map', 'Districts'], ['rules', 'Rules'], ['hist', 'History']]) + (sub === 'rules' ? rules : sub === 'hist' ? (hist || '<p style="color:var(--muted)">No wars yet.</p>') : mine + d.districts.map((x) => districtCard(x, cfg)).join(''));
+    }
+    return h + mine + '<div class="grid g3">' + d.districts.map((x) => districtCard(x, cfg)).join('') + '</div>' + rules + hist;
+  }
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-act^="terr-"]'); if (!t || !cloud.on) return;
+    const a = t.dataset.act, id = t.dataset.id;
+    if (a === 'terr-reload') { terrUi.err = ''; loadTerritory(); }
+    else if (a === 'terr-ask') { terrUi.ask = { district: id, kind: t.dataset.kind }; render(); }
+    else if (a === 'terr-cancel') { terrUi.ask = null; render(); }
+    else if (a === 'terr-confirm') terrCall(t.dataset.kind === 'claim' ? 'game_territory_claim' : 'game_territory_declare_war', { p_district: id }, (r) => (t.dataset.kind === 'claim' ? 'Your crew now rules the district.' : 'War declared. It ends in ' + leftText(r.ends_at) + '.'));
+    else if (a === 'terr-release') terrCall('game_territory_release', {}, () => 'Your crew gave up the district.');
   });
   /* ---------- background music ----------
      Original music made live in the browser (Web Audio): a slow, smoky minor-key swing in C minor with brushed ride,
