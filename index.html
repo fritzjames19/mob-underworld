@@ -2506,7 +2506,8 @@ const ART = (function () {
     { id: 'crew', label: 'Crew', icon: 'shield' },
     { id: 'territory', label: 'Territory', icon: 'crown' },
     { id: 'titles', label: 'Titles', icon: 'award' },
-    { id: 'underground', label: 'Underground', icon: 'lock', gate: true },
+    { id: 'underground', label: 'Underground', icon: 'lock', gate: 'underground' },
+    { id: 'law', label: 'The Law', icon: 'eye', gate: 'online' },
     { id: 'rankings', label: 'Rankings', icon: 'trophy' },
     { id: 'profile', label: 'Profile', icon: 'user' },
     { id: 'settings', label: 'Settings', icon: 'sliders', hidden: true },
@@ -2587,7 +2588,7 @@ const ART = (function () {
     $('#sidebar').innerHTML =
       '<div class="brand"><div class="brand-mark">M<span>O</span>B</div><div class="brand-sub">The Underworld</div></div>' +
       '<nav class="nav" aria-label="Pages">' +
-      ROUTES.filter((r) => !r.hidden && (!r.gate || (cloud.on && ugRankOk()))).map((r) => '<button data-act="nav" data-route="' + r.id + '"' + (ui.route === r.id ? ' aria-current="page"' : '') + '>' + icon(r.icon, 19) + '<span>' + r.label + '</span>' + (r.id === 'crew' ? crewDot() : '') + '</button>').join('') +
+      ROUTES.filter((r) => !r.hidden && (!r.gate || (cloud.on && (r.gate !== 'underground' || ugRankOk())))).map((r) => '<button data-act="nav" data-route="' + r.id + '"' + (ui.route === r.id ? ' aria-current="page"' : '') + '>' + icon(r.icon, 19) + '<span>' + r.label + '</span>' + (r.id === 'crew' ? crewDot() : r.id === 'law' ? lawDot() : '') + '</button>').join('') +
       '</nav>' +
       '<div class="side-user"><div class="frame" style="padding:2px;border-width:1px">' + portrait(p.portrait, 44) + '</div><div class="who"><b>' + esc(p.name) + '</b><span>' + esc(rank) + '</span></div>' +
       '<button class="icon-btn" data-act="nav" data-route="settings" aria-label="Settings"' + (ui.route === 'settings' ? ' aria-current="page"' : '') + '>' + icon('sliders', 18) + '</button></div>';
@@ -3247,7 +3248,7 @@ const ART = (function () {
     syncModalHistory();
     const root = $('#modal-root');
     if (!ui.modal) { root.innerHTML = ''; lastModalKey = null; return; }
-    const html = ui.modal.type === 'mission' ? missionModal() : ui.modal.type === 'item' ? itemModal() : ui.modal.type === 'profile' ? profileModal() : ui.modal.type === 'player' ? playerModal() : ui.modal.type === 'supplies' ? suppliesModal() : ui.modal.type === 'titlerec' ? titleRecModal() : ui.modal.type === 'fight' ? fightModal() : resetModal();
+    const html = ui.modal.type === 'mission' ? missionModal() : ui.modal.type === 'item' ? itemModal() : ui.modal.type === 'profile' ? profileModal() : ui.modal.type === 'player' ? playerModal() : ui.modal.type === 'police' ? policeModal() : ui.modal.type === 'supplies' ? suppliesModal() : ui.modal.type === 'titlerec' ? titleRecModal() : ui.modal.type === 'fight' ? fightModal() : resetModal();
     const key = modalKey();
     const prevScroll = root.querySelector('.modal') ? root.querySelector('.modal').scrollTop : 0;
     root.innerHTML = html;
@@ -3260,7 +3261,7 @@ const ART = (function () {
   }
 
   /* ---------- render ---------- */
-  const PAGES = { dashboard: pageDashboard, jobs: pageJobs, city: pageCity, inventory: pageInventory, shop: pageShop, businesses: pageBusinesses, crew: pageCrew, territory: pageTerritory, underground: pageUnderground, titles: pageTitles, rankings: pageRankings, profile: pageProfile, settings: pageSettings };
+  const PAGES = { dashboard: pageDashboard, jobs: pageJobs, city: pageCity, inventory: pageInventory, shop: pageShop, businesses: pageBusinesses, crew: pageCrew, territory: pageTerritory, underground: pageUnderground, law: pageLaw, titles: pageTitles, rankings: pageRankings, profile: pageProfile, settings: pageSettings };
   function render() {
     renderSidebar(); renderTopbar(); renderTabbar();
     const view = $('#view');
@@ -3271,7 +3272,7 @@ const ART = (function () {
     applyPaging();
     renderModal();
     animateBars();
-    const names = { dashboard: 'Dashboard', jobs: 'Job Board', city: 'City', inventory: 'Inventory', shop: 'Equipment Shop', businesses: 'Businesses', crew: 'Crew', territory: 'Territory', underground: 'Underground', titles: 'Titles', rankings: 'Rankings', profile: 'Profile', settings: 'Settings' };
+    const names = { dashboard: 'Dashboard', jobs: 'Job Board', city: 'City', inventory: 'Inventory', shop: 'Equipment Shop', businesses: 'Businesses', crew: 'Crew', territory: 'Territory', underground: 'Underground', law: 'The Law', titles: 'Titles', rankings: 'Rankings', profile: 'Profile', settings: 'Settings' };
     document.title = names[ui.route] + ' · MOB: The Underworld';
   }
 
@@ -3680,6 +3681,7 @@ const ART = (function () {
         const verb = r.outcome === 'success' ? 'Completed' : r.outcome === 'partial' ? 'Partly finished' : 'Failed';
         let line = verb + ' "' + m.title + '".'; if (r.cash_minor) line += ' +' + money(r.cash_minor) + '.'; if (r.cash_lost_minor) line += ' Lost ' + money(r.cash_lost_minor) + '.'; if (r.health_lost) line += ' Took ' + r.health_lost + ' damage.';
         log(line, r.outcome);
+        setTimeout(() => { if (typeof lawPoll === 'function') lawPoll(); }, 900);
         if (r.knocked_out) log('You were knocked out and came to in an alley with your health restored to ' + MOB.CONFIG.defeatRecoveryHealth + '.', 'failure');
         (r.promotions || []).forEach((n) => log('You were promoted to ' + n + '.', 'promotion'));
         if (r.outcome === 'failure') next.stats.streak = 0; else { next.stats.streak += 1; next.stats.bestStreak = Math.max(next.stats.bestStreak, next.stats.streak); }
@@ -4338,6 +4340,152 @@ const ART = (function () {
       '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">' + stat('Health', p.health, maxH) + stat('Energy', p.energy, MOB.CONFIG.maxEnergy) + stat('Heat', p.heat, 100) + stat('Cash', money(p.cashMinor)) + '</div>' +
       rows + '<p style="color:var(--muted);font-size:12.5px">Tap Use to drink, eat or burn it now. Buying takes cash straight away, just like the Equipment Shop.</p></div></div></div>';
   }
+
+  /* ---------- the Law and the Wards (online only): police patrols, the Precinct, and ward politics ---------- */
+  const lawUi = { pol: null, ward: null, at: 0, wardAt: 0, loading: false, err: '', loadedFor: null, ask: null, shownStop: 0 };
+  const lawEmail = () => cloud.session && cloud.session.email;
+  async function loadPolice(quiet) {
+    if (!cloud.on) return null;
+    if (!quiet) { lawUi.loading = true; render(); }
+    try {
+      const r = await rpc('game_police'); lawUi.pol = r.ok ? r : null; lawUi.err = r.ok ? '' : (r.error || 'Could not reach the precinct.'); lawUi.at = Date.now(); lawUi.loadedFor = lawEmail();
+    } catch (e) {
+      if (e.signedOut) { showAuth(friendly(e)); return null; }
+      lawUi.err = (e.status === 404 || /could not find|function/i.test(e.message || '')) ? 'The Law needs the latest database update (migration 0021). Ask whoever runs the game to install it.' : friendly(e);
+    } finally { lawUi.loading = false; if (ui.route === 'law' || ui.route === 'dashboard') render(); }
+    return lawUi.pol;
+  }
+  async function loadWards(quiet) {
+    if (!cloud.on) return;
+    try { const r = await rpc('game_ward'); lawUi.ward = r.ok ? r : null; lawUi.wardAt = Date.now(); if (!r.ok) lawUi.err = r.error || ''; }
+    catch (e) { if (e.signedOut) { showAuth(friendly(e)); return; } lawUi.err = friendly(e); }
+    finally { if (ui.route === 'law') render(); }
+  }
+  /* a patrol that appeared while you were busy: open it once, unless something else is on screen */
+  async function lawPoll() {
+    if (!cloud.on || document.hidden || cloud.busy || lawUi.loading) return;
+    const p = await loadPolice(true);
+    if (p && p.pending && lawUi.shownStop !== p.pending.id && !ui.modal && !ui.resolving) { lawUi.shownStop = p.pending.id; ui.modal = { type: 'police', stopId: p.pending.id, result: null }; render(); }
+  }
+  setInterval(lawPoll, 30000);
+  const lawDotN = () => (lawUi.pol && lawUi.pol.pending ? 1 : 0);
+  function lawDot() { return lawDotN() ? '<span class="badge-dot" role="status" aria-label="A patrol has stopped you">!</span>' : ''; }
+  async function lawCall(fn, args, okMsg) {
+    if (cloud.busy) return null;
+    cloud.busy = true; document.body.classList.add('busy'); lawUi.ask = null; let out = null;
+    try {
+      const r = await rpc(fn, Object.assign({ p_key: newKey() }, args)); out = r;
+      if (!r || !r.ok) toast((r && r.error) || 'That did not work.', 'error'); else if (okMsg) toast(okMsg(r), 'success');
+      try { const next = await pullState(); if (next) { S = next; saveExtras(); } } catch (e) { /* the next refresh will catch up */ }
+      await loadPolice(true); if (fn.indexOf('ward') >= 0) await loadWards(true);
+    } catch (e) { if (e.signedOut) showAuth(friendly(e)); else toast(friendly(e), 'error'); }
+    finally { cloud.busy = false; document.body.classList.remove('busy'); render(); }
+    return out;
+  }
+  const heatFlavor = (h) => h >= 80 ? 'Every cop in the district knows your face.' : h >= 60 ? 'Patrols are looking for you. Expect to be stopped.' : h >= 40 ? 'Watched. Keep your head down.' : h >= 20 ? 'Noticed, but nobody is looking hard yet.' : 'Quiet. Nobody is looking for you.';
+  const minsLeft = (ms) => Math.max(0, Math.round((ms - Date.now()) / 60000));
+  const lawBtn = (act, id, label, cls, extra) => '<button class="btn ' + (cls || '') + '" data-act="' + act + '"' + (id !== undefined && id !== null ? ' data-id="' + id + '"' : '') + (extra || '') + '>' + label + '</button>';
+
+  function policeModal() {
+    const mo = ui.modal, p = lawUi.pol && lawUi.pol.pending, res = mo.result;
+    let body, title = 'Police patrol', eyebrow = p ? esc(p.district || 'The street') : 'The street';
+    if (res) {
+      title = res.success || res.choice === 'bribe' ? 'You are free to go' : 'It did not go well';
+      body = '<p>' + esc(res.message) + '</p><div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0">' +
+        (res.paid_minor ? '<span class="chip bad">Paid ' + money(res.paid_minor) + '</span>' : '') +
+        (res.heat_change ? '<span class="chip ' + (res.heat_change < 0 ? 'good' : 'bad') + '">Heat ' + (res.heat_change > 0 ? '+' : '') + res.heat_change + '</span>' : '') +
+        (res.health_lost ? '<span class="chip bad">-' + res.health_lost + ' health</span>' : '') + '</div><div class="row-end">' + lawBtn('close-modal', null, 'Back to the street') + '</div>';
+    } else if (!p) {
+      body = '<p>The patrol has moved on.</p><div class="row-end">' + lawBtn('close-modal', null, 'Close') + '</div>';
+    } else {
+      const cash = S.player.cashMinor, short = cash < p.bribe_minor;
+      body = '<p>A patrol car cuts the corner. "Hold it right there." Your heat is <b>' + p.heat + '</b>. They want an answer in <b>' + minsLeft(p.expires_at) + ' minutes</b>; if you walk away they will write you a fine.</p>' +
+        '<div style="display:grid;gap:8px;margin-top:10px">' +
+        '<button class="btn" style="display:block;text-align:left;width:100%" data-act="law-answer" data-id="bribe"' + (short ? ' disabled' : '') + '>Pay the bribe · ' + money(p.bribe_minor) + '<small style="display:block;font-weight:400;opacity:.85">Always works. Heat -25.' + (short ? ' You are short.' : '') + '</small></button>' +
+        '<button class="btn ghost" style="display:block;text-align:left;width:100%" data-act="law-answer" data-id="talk">Talk your way out · ' + p.odds.talk + '%<small style="display:block;font-weight:400;opacity:.85">Charisma and Intelligence. Win: heat -10. Lose: a fine of 1.5 times the bribe.</small></button>' +
+        '<button class="btn ghost" style="display:block;text-align:left;width:100%" data-act="law-answer" data-id="run">Run · ' + p.odds.run + '%<small style="display:block;font-weight:400;opacity:.85">Agility. Win: heat +5. Lose: a fine and 15 health.</small></button>' +
+        '<button class="btn ghost" style="display:block;text-align:left;width:100%" data-act="law-answer" data-id="fight">Fight · ' + p.odds.fight + '%<small style="display:block;font-weight:400;opacity:.85">Strength. Win: heat +15. Lose: double the fine and 25 health.</small></button></div>' +
+        '<p style="color:var(--muted);font-size:12.5px;margin-top:10px">There is no jail in this city: the worst a patrol can do is take your money and some blood. You can also answer later from the Law page.</p>';
+    }
+    return '<div class="modal-back" data-act="backdrop"><div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="pol-title" tabindex="-1"><div class="modal-head"><div><div class="eyebrow" style="color:var(--bad)">' + eyebrow + '</div><h2 id="pol-title">' + esc(title) + '</h2></div>' +
+      '<button class="icon-btn" data-act="close-modal" aria-label="Close">' + icon('x', 18) + '</button></div><div class="modal-body">' + body + '</div></div></div>';
+  }
+
+  function precinctView(d) {
+    const heat = d.heat, desk = d.desk, ret = d.retainer;
+    const status = '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:6px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3 style="font-size:18px">Your heat: ' + heat + ' · ' + esc(MOB.heatBand(heat)) + '</h3><span class="chip">Cash ' + money(d.cash_minor) + '</span></div>' +
+      '<div style="color:var(--muted);font-size:13.5px">' + esc(heatFlavor(heat)) + (heat >= d.min_heat ? '' : ' Patrols only stop people at heat ' + d.min_heat + ' or more.') + '</div>' +
+      (d.pending ? '<div style="margin-top:6px">' + lawBtn('law-open-stop', null, 'A patrol is waiting for your answer', 'sm') + '</div>' : '') + '</section>';
+    const deskAsk = lawUi.ask === 'desk';
+    const deskCard = '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:6px"><h3 style="font-size:17px">The desk sergeant</h3><div style="color:var(--muted);font-size:13.5px">A quiet word and an envelope. Cuts your heat by ' + desk.heat_cut + '. Costs ' + money(desk.cost_minor) + ' at your current heat.</div>' +
+      (desk.ready_at ? '<div style="font-size:13px">Ready again in ' + leftText(desk.ready_at) + '.</div>' : heat <= 0 ? '<div style="font-size:13px;color:var(--muted)">Nobody is looking for you.</div>'
+        : deskAsk ? '<div style="display:flex;gap:8px">' + lawBtn('law-desk-go', null, 'Pay ' + money(desk.cost_minor)) + lawBtn('law-cancel', null, 'Cancel', 'ghost sm') + '</div>' : '<div>' + lawBtn('law-desk', null, 'Smooth it over') + '</div>') + '</section>';
+    const retAsk = lawUi.ask === 'retainer';
+    const retCard = '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:6px"><h3 style="font-size:17px">A beat cop on retainer</h3><div style="color:var(--muted);font-size:13.5px">' + money(ret.cost_minor) + ' for ' + ret.days + ' days. Patrols stop you ' + (100 - ret.stop_pct) + '% less often and bribes cost ' + (100 - ret.bribe_pct) + '% less.</div>' +
+      (ret.until ? '<div style="font-size:13px">On your payroll for another ' + leftText(ret.until) + '.</div>' : '') +
+      (retAsk ? '<div style="display:flex;gap:8px">' + lawBtn('law-ret-go', null, 'Pay ' + money(ret.cost_minor)) + lawBtn('law-cancel', null, 'Cancel', 'ghost sm') + '</div>' : '<div>' + lawBtn('law-ret', null, ret.until ? 'Renew' : 'Put him on the payroll') + '</div>') + '</section>';
+    const hist = d.history.length ? '<section data-pg="item" class="card" style="padding:14px"><h3 style="font-size:17px;margin-bottom:6px">Recent stops</h3><ul style="margin-left:18px;color:var(--muted);font-size:13.5px;display:grid;gap:3px">' + d.history.map((h) => '<li>' + esc(h.district || 'The street') + ': ' + esc(({ bribed: 'bribed', talked: 'talked', ran: 'ran', fought: 'fought', fined: 'fined', expired: 'ignored, fined' })[h.status] || h.status) + (h.outcome && h.outcome.paid_minor ? ' · paid ' + money(h.outcome.paid_minor) : '') + '</li>').join('') + '</ul></section>' : '';
+    return status + deskCard + retCard + hist;
+  }
+
+  function wardView(w) {
+    const gifts = w.gifts;
+    const tiers = w.tiers.slice().sort((a, b) => a[0] - b[0]);
+    const explain = '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:4px"><h3 style="font-size:17px">How the wards work</h3><ul style="margin-left:18px;color:var(--muted);font-size:13.5px;display:grid;gap:3px">' +
+      '<li>Every district has an alderman. Slip him an envelope and your <b>standing</b> with him rises (up to 100). It fades by ' + w.decay_per_day + ' a day.</li>' +
+      tiers.map((t) => '<li>Standing <b>' + t[0] + '+</b>: ' + t[1] + '% less heat from jobs there' + (t[2] < 100 ? ', and patrols there stop you ' + (100 - t[2]) + '% less' : '') + '.</li>').join('') +
+      '<li>At 50+ the police also take 20% less to look away. A crew that rules a district gets half as many patrols there.</li><li>You can give up to ' + w.daily_gifts + ' envelopes per ward per day.</li></ul></section>';
+    const cards = w.wards.map((x) => {
+      const asked = lawUi.ask && lawUi.ask.ward === x.district_id ? lawUi.ask.tier : null;
+      const bar = '<div role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + x.standing + '" style="height:12px;background:var(--bg);border:1px solid var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:' + x.standing + '%;background:var(--gold)"></div></div>';
+      const left = w.daily_gifts - x.gifts_today;
+      const btns = x.standing >= 100 ? '<div style="color:var(--muted);font-size:13px">He could not think more highly of you.</div>' : left <= 0 ? '<div style="color:var(--muted);font-size:13px">No more envelopes today.</div>'
+        : asked !== null ? '<div style="display:flex;gap:8px;flex-wrap:wrap">' + lawBtn('law-gift-go', x.district_id, 'Hand over ' + money(gifts[asked][0]), '', ' data-tier="' + asked + '"') + lawBtn('law-cancel', null, 'Cancel', 'ghost sm') + '</div>'
+        : '<div style="display:flex;gap:8px;flex-wrap:wrap">' + gifts.map((g, i) => lawBtn('law-gift', x.district_id, money(g[0]) + ' · +' + g[1], 'sm ghost', ' data-tier="' + i + '"')).join('') + '</div>';
+      return '<article data-pg="item" class="card" style="padding:14px;display:grid;gap:7px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3 style="font-size:17px">' + esc(x.ward) + '</h3>' + (x.ruling ? '<span class="chip gold">Your crew rules here</span>' : '') + '</div>' +
+        '<div style="font-size:14px"><b>' + esc(x.alderman) + '</b></div><div style="color:var(--muted);font-size:13px">' + esc(x.blurb) + '</div>' + bar +
+        '<div style="font-size:13px">Standing <b class="num">' + x.standing + '</b>' + (x.heat_cut_pct ? ' · ' + x.heat_cut_pct + '% less job heat' : '') + (x.stop_pct < 100 ? ' · ' + (100 - x.stop_pct) + '% fewer patrols' : '') + '</div>' + btns + '</article>';
+    }).join('');
+    return explain + cards;
+  }
+
+  function pageLaw() {
+    const h = head('The Law', 'The Law and the Wards', 'Patrols, payoffs and the aldermen who make both cheaper. Invented names, 1931 manners.');
+    if (!cloud.on) {
+      return h + '<section class="card" style="padding:20px;display:grid;gap:10px"><h3 style="font-size:22px">Sign in to deal with the Law</h3><p style="color:var(--muted)">Patrols and aldermen only exist in the online game.</p>' +
+        (CLOUD_ENABLED ? '<div><button class="btn" data-act="go-online">Go online</button></div>' : '') + '</section>';
+    }
+    if (lawUi.loadedFor !== lawEmail() && !lawUi.loading) setTimeout(() => loadPolice(), 0);
+    else if (Date.now() - lawUi.at > 6000 && !lawUi.loading && !cloud.busy) setTimeout(() => loadPolice(true), 0);
+    const sub = isPhone() ? curSub('law', 'precinct') : 'both';
+    if ((sub === 'wards' || sub === 'both') && (!lawUi.ward || Date.now() - lawUi.wardAt > 8000) && !cloud.busy) setTimeout(() => loadWards(true), 0);
+    if (lawUi.err) return h + '<section class="card" style="padding:18px"><p>' + esc(lawUi.err) + '</p><button class="btn sm" data-act="law-reload">Try again</button></section>';
+    if (!lawUi.pol) return h + '<p style="color:var(--muted)">Loading…</p>';
+    if (sub === 'both') return h + '<div class="grid g2" style="align-items:start"><div style="display:grid;gap:12px">' + precinctView(lawUi.pol) + '</div><div style="display:grid;gap:12px">' + (lawUi.ward ? wardView(lawUi.ward) : '<p style="color:var(--muted)">Loading…</p>') + '</div></div>';
+    const tabs = subTabs('law', [['precinct', 'Precinct'], ['wards', 'Wards']]);
+    if (sub === 'wards') return h + tabs + (lawUi.ward ? wardView(lawUi.ward) : '<p style="color:var(--muted)">Loading…</p>');
+    return h + tabs + precinctView(lawUi.pol);
+  }
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-act^="law-"]'); if (!t || !cloud.on) return;
+    const a = t.dataset.act, id = t.dataset.id;
+    if (a === 'law-reload') { lawUi.err = ''; loadPolice(); }
+    else if (a === 'law-cancel') { lawUi.ask = null; render(); }
+    else if (a === 'law-desk') { lawUi.ask = 'desk'; render(); }
+    else if (a === 'law-ret') { lawUi.ask = 'retainer'; render(); }
+    else if (a === 'law-gift') { lawUi.ask = { ward: id, tier: Number(t.dataset.tier) }; render(); }
+    else if (a === 'law-desk-go') lawCall('game_police_desk', {}, (r) => 'The sergeant takes the envelope. Heat is now ' + r.heat + '.');
+    else if (a === 'law-ret-go') lawCall('game_police_retainer', {}, () => 'A beat cop is on your payroll.');
+    else if (a === 'law-gift-go') lawCall('game_ward_gift', { p_district_id: id, p_tier: Number(t.dataset.tier) }, (r) => r.alderman + ' will remember this. Standing ' + r.standing + '.');
+    else if (a === 'law-open-stop') { const p = lawUi.pol && lawUi.pol.pending; if (p && !ui.modal) { ui.modal = { type: 'police', stopId: p.id, result: null }; render(); } }
+    else if (a === 'law-answer') {
+      const mo = ui.modal; if (!mo || mo.type !== 'police' || cloud.busy) return;
+      lawCall('game_police_respond', { p_stop_id: mo.stopId, p_choice: id }, null).then((r) => {
+        if (r && r.ok) { if (ui.modal && ui.modal.type === 'police') { ui.modal.result = r; render(); } }
+        else if (r && !r.ok && /already over|no patrol/i.test(r.error || '')) { closeModal(); }
+      });
+    }
+  });
   /* ---------- background music ----------
      Original cool jazz made live in the browser (Web Audio), nothing recorded and no licences: a medium swing in C minor over a classic
      ii-V-I minor turnaround (Fm7 Bb7 Ebmaj7 Abmaj7 Dm7b5 G7 Cm7), played by a walking upright bass, brushed ride and hi-hat, a Rhodes-style
