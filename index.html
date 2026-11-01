@@ -4342,7 +4342,7 @@ const ART = (function () {
   }
 
   /* ---------- the Law and the Wards (online only): police patrols, the Precinct, and ward politics ---------- */
-  const lawUi = { pol: null, ward: null, at: 0, wardAt: 0, loading: false, err: '', loadedFor: null, ask: null, shownStop: 0 };
+  const lawUi = { pol: null, ward: null, el: null, elAt: 0, at: 0, wardAt: 0, loading: false, err: '', loadedFor: null, ask: null, shownStop: 0 };
   const lawEmail = () => cloud.session && cloud.session.email;
   async function loadPolice(quiet) {
     if (!cloud.on) return null;
@@ -4362,6 +4362,16 @@ const ART = (function () {
     finally { if (ui.route === 'law') render(); }
   }
   /* a patrol that appeared while you were busy: open it once, unless something else is on screen */
+  async function loadElection(quiet) {
+    if (!cloud.on) return;
+    try { const r = await rpc('game_election'); lawUi.el = r.ok ? r : null; lawUi.elAt = Date.now(); if (!r.ok) lawUi.err = r.error || ''; }
+    catch (e) {
+      if (e.signedOut) { showAuth(friendly(e)); return; }
+      lawUi.el = null; lawUi.elAt = Date.now();
+      lawUi.err = (e.status === 404 || /could not find|function/i.test(e.message || '')) ? 'Elections need the latest database update (migration 0022). Ask whoever runs the game to install it.' : friendly(e);
+    }
+    if (ui.route === 'law') render();
+  }
   async function lawPoll() {
     if (!cloud.on || document.hidden || cloud.busy || lawUi.loading) return;
     const p = await loadPolice(true);
@@ -4377,7 +4387,7 @@ const ART = (function () {
       const r = await rpc(fn, Object.assign({ p_key: newKey() }, args)); out = r;
       if (!r || !r.ok) toast((r && r.error) || 'That did not work.', 'error'); else if (okMsg) toast(okMsg(r), 'success');
       try { const next = await pullState(); if (next) { S = next; saveExtras(); } } catch (e) { /* the next refresh will catch up */ }
-      await loadPolice(true); if (fn.indexOf('ward') >= 0) await loadWards(true);
+      await loadPolice(true); if (fn.indexOf('ward') >= 0 || fn.indexOf('election') >= 0) { await loadWards(true); await loadElection(true); }
     } catch (e) { if (e.signedOut) showAuth(friendly(e)); else toast(friendly(e), 'error'); }
     finally { cloud.busy = false; document.body.classList.remove('busy'); render(); }
     return out;
@@ -4428,6 +4438,35 @@ const ART = (function () {
     return status + deskCard + retCard + hist;
   }
 
+  const giftPct = (did) => { const d = lawUi.el && lawUi.el.districts.find((x) => x.district_id === did); return d && d.term ? d.term.gift_pct : 100; };
+  const effTxt = (st, ht, gf) => [st !== 100 ? (st < 100 ? 'patrols ' + (100 - st) + '% rarer' : 'patrols ' + (st - 100) + '% more often') : '', ht !== 100 ? (ht < 100 ? (100 - ht) + '% less job heat' : (ht - 100) + '% more job heat') : '', gf !== 100 ? 'envelopes buy ' + (gf > 100 ? (gf - 100) + '% more' : (100 - gf) + '% less') : ''].filter(Boolean).join(', ') || 'no change';
+  const leftTxt = (ms) => { const m = Math.max(0, Math.floor((ms - Date.now()) / 60000)), d = Math.floor(m / 1440), hh = Math.floor((m % 1440) / 60); return d ? d + 'd ' + hh + 'h' : hh + 'h ' + (m % 60) + 'm'; };
+  function electionView(e) {
+    const tiers = e.tiers;
+    const explain = '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:4px"><h3 style="font-size:17px">Election week</h3><ul style="margin-left:18px;color:var(--muted);font-size:13.5px;display:grid;gap:3px">' +
+      '<li>Every district votes every week. Polls close in <b>' + leftTxt(e.closes_at) + '</b> (Monday midnight, server time).</li>' +
+      '<li>Back one man per district with a donation: ' + tiers.map((t) => money(t[0]) + ' = ' + t[1] + ' vote' + (t[1] > 1 ? 's' : '')).join(', ') + '. Up to ' + e.max_donations + ' donations a week per district, and you cannot play both sides.</li>' +
+      '<li>The winner\'s platform governs the district for the <b>following</b> week. A tie, or nobody voting, goes to the machine\'s pick.</li>' +
+      '<li>If the man you backed wins, collect his thanks: +' + e.thanks_standing + ' standing with the alderman.</li></ul></section>';
+    const cards = e.districts.map((d) => {
+      const asked = lawUi.ask && lawUi.ask.elect === d.district_id ? lawUi.ask : null;
+      const mine = d.mine, full = mine && mine.donations >= e.max_donations;
+      const cand = d.candidates.map((c) => {
+        const mineHere = mine && mine.slot === c.slot, blocked = mine && !mineHere;
+        const backed = mineHere ? '<div style="color:var(--gold);font-size:13px">You backed him: ' + mine.weight + ' vote' + (mine.weight > 1 ? 's' : '') + '.</div>' : '';
+        const btns = full || blocked ? backed
+          : backed + (asked && asked.slot === c.slot ? '<div style="display:flex;gap:8px;flex-wrap:wrap">' + lawBtn('law-back-go', d.district_id, 'Donate ' + money(tiers[asked.tier][0]), '', ' data-slot="' + c.slot + '" data-tier="' + asked.tier + '"') + lawBtn('law-cancel', null, 'Cancel', 'ghost sm') + '</div>'
+          : '<div style="display:flex;gap:8px;flex-wrap:wrap">' + tiers.map((t, i) => lawBtn('law-back', d.district_id, money(t[0]) + ' · ' + t[1] + ' vote' + (t[1] > 1 ? 's' : ''), 'sm ghost', ' data-slot="' + c.slot + '" data-tier="' + i + '"' + (e.cash_minor < t[0] ? ' disabled' : ''))).join('') + '</div>');
+        return '<div style="border:1px solid ' + (mineHere ? 'var(--gold)' : 'var(--line)') + ';border-radius:4px;padding:9px;display:grid;gap:4px"><div style="display:flex;justify-content:space-between;gap:8px"><b>' + esc(c.name) + '</b><span class="num">' + c.votes + ' vote' + (c.votes === 1 ? '' : 's') + '</span></div>' +
+          '<div style="font-size:13px"><i>' + esc(c.platform) + '</i>: ' + effTxt(c.stop_pct, c.heat_pct, c.gift_pct) + '</div>' + btns + '</div>';
+      }).join('');
+      const t = d.term;
+      const thanks = d.thanks.map((x) => lawBtn('law-thanks', d.district_id, 'Collect ' + esc(x.candidate) + '\'s thanks', 'sm', ' data-week="' + x.week + '"')).join(' ');
+      return '<article data-pg="item" class="card" style="padding:14px;display:grid;gap:8px"><h3 style="font-size:17px">' + esc(d.district) + '</h3>' +
+        '<div style="font-size:13px;color:var(--muted)">Governing now: ' + (t ? '<b style="color:var(--text)">' + esc(t.candidate) + '</b>, ' + esc(t.platform) + ': ' + effTxt(t.stop_pct, t.heat_pct, t.gift_pct) : 'nobody') + '</div>' + cand + (thanks ? '<div style="display:flex;gap:8px;flex-wrap:wrap">' + thanks + '</div>' : '') + '</article>';
+    }).join('');
+    return explain + cards;
+  }
   function wardView(w) {
     const gifts = w.gifts;
     const tiers = w.tiers.slice().sort((a, b) => a[0] - b[0]);
@@ -4441,7 +4480,7 @@ const ART = (function () {
       const left = w.daily_gifts - x.gifts_today;
       const btns = x.standing >= 100 ? '<div style="color:var(--muted);font-size:13px">He could not think more highly of you.</div>' : left <= 0 ? '<div style="color:var(--muted);font-size:13px">No more envelopes today.</div>'
         : asked !== null ? '<div style="display:flex;gap:8px;flex-wrap:wrap">' + lawBtn('law-gift-go', x.district_id, 'Hand over ' + money(gifts[asked][0]), '', ' data-tier="' + asked + '"') + lawBtn('law-cancel', null, 'Cancel', 'ghost sm') + '</div>'
-        : '<div style="display:flex;gap:8px;flex-wrap:wrap">' + gifts.map((g, i) => lawBtn('law-gift', x.district_id, money(g[0]) + ' · +' + g[1], 'sm ghost', ' data-tier="' + i + '"')).join('') + '</div>';
+        : '<div style="display:flex;gap:8px;flex-wrap:wrap">' + gifts.map((g, i) => lawBtn('law-gift', x.district_id, money(g[0]) + ' · +' + Math.max(1, Math.floor(g[1] * giftPct(x.district_id) / 100)), 'sm ghost', ' data-tier="' + i + '"')).join('') + '</div>';
       return '<article data-pg="item" class="card" style="padding:14px;display:grid;gap:7px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3 style="font-size:17px">' + esc(x.ward) + '</h3>' + (x.ruling ? '<span class="chip gold">Your crew rules here</span>' : '') + '</div>' +
         '<div style="font-size:14px"><b>' + esc(x.alderman) + '</b></div><div style="color:var(--muted);font-size:13px">' + esc(x.blurb) + '</div>' + bar +
         '<div style="font-size:13px">Standing <b class="num">' + x.standing + '</b>' + (x.heat_cut_pct ? ' · ' + x.heat_cut_pct + '% less job heat' : '') + (x.stop_pct < 100 ? ' · ' + (100 - x.stop_pct) + '% fewer patrols' : '') + '</div>' + btns + '</article>';
@@ -4458,11 +4497,13 @@ const ART = (function () {
     if (lawUi.loadedFor !== lawEmail() && !lawUi.loading) setTimeout(() => loadPolice(), 0);
     else if (Date.now() - lawUi.at > 6000 && !lawUi.loading && !cloud.busy) setTimeout(() => loadPolice(true), 0);
     const sub = isPhone() ? curSub('law', 'precinct') : 'both';
+    if ((sub === 'elections' || sub === 'both') && (!lawUi.el || Date.now() - lawUi.elAt > 8000) && !cloud.busy) setTimeout(() => loadElection(true), 0);
     if ((sub === 'wards' || sub === 'both') && (!lawUi.ward || Date.now() - lawUi.wardAt > 8000) && !cloud.busy) setTimeout(() => loadWards(true), 0);
     if (lawUi.err) return h + '<section class="card" style="padding:18px"><p>' + esc(lawUi.err) + '</p><button class="btn sm" data-act="law-reload">Try again</button></section>';
     if (!lawUi.pol) return h + '<p style="color:var(--muted)">Loading…</p>';
-    if (sub === 'both') return h + '<div class="grid g2" style="align-items:start"><div style="display:grid;gap:12px">' + precinctView(lawUi.pol) + '</div><div style="display:grid;gap:12px">' + (lawUi.ward ? wardView(lawUi.ward) : '<p style="color:var(--muted)">Loading…</p>') + '</div></div>';
-    const tabs = subTabs('law', [['precinct', 'Precinct'], ['wards', 'Wards']]);
+    if (sub === 'both') return h + '<div class="grid g2" style="align-items:start"><div style="display:grid;gap:12px">' + precinctView(lawUi.pol) + '</div><div style="display:grid;gap:12px">' + (lawUi.ward ? wardView(lawUi.ward) : '<p style="color:var(--muted)">Loading…</p>') + '</div></div>' + '<h2 style="font-size:20px;margin:18px 0 8px">Elections</h2><div class="grid g2" style="align-items:start">' + (lawUi.el ? electionView(lawUi.el) : '<p style="color:var(--muted)">Loading…</p>') + '</div>';
+    const tabs = subTabs('law', [['precinct', 'Precinct'], ['wards', 'Wards'], ['elections', 'Elections']]);
+    if (sub === 'elections') return h + tabs + (lawUi.el ? electionView(lawUi.el) : '<p style="color:var(--muted)">Loading…</p>');
     if (sub === 'wards') return h + tabs + (lawUi.ward ? wardView(lawUi.ward) : '<p style="color:var(--muted)">Loading…</p>');
     return h + tabs + precinctView(lawUi.pol);
   }
@@ -4473,6 +4514,9 @@ const ART = (function () {
     else if (a === 'law-cancel') { lawUi.ask = null; render(); }
     else if (a === 'law-desk') { lawUi.ask = 'desk'; render(); }
     else if (a === 'law-ret') { lawUi.ask = 'retainer'; render(); }
+    else if (a === 'law-back') { lawUi.ask = { elect: id, slot: Number(t.dataset.slot), tier: Number(t.dataset.tier) }; render(); }
+    else if (a === 'law-back-go') lawCall('game_election_back', { p_district_id: id, p_slot: Number(t.dataset.slot), p_tier: Number(t.dataset.tier) }, (r) => 'Donation taken for ' + r.candidate + '. You now have ' + r.my_votes + ' vote' + (r.my_votes > 1 ? 's' : '') + '.');
+    else if (a === 'law-thanks') lawCall('game_election_thanks', { p_district_id: id, p_week: Number(t.dataset.week) }, (r) => 'The alderman is grateful. Standing ' + r.standing + '.');
     else if (a === 'law-gift') { lawUi.ask = { ward: id, tier: Number(t.dataset.tier) }; render(); }
     else if (a === 'law-desk-go') lawCall('game_police_desk', {}, (r) => 'The sergeant takes the envelope. Heat is now ' + r.heat + '.');
     else if (a === 'law-ret-go') lawCall('game_police_retainer', {}, () => 'A beat cop is on your payroll.');
