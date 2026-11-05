@@ -4307,8 +4307,12 @@ const ART = (function () {
     if (!d.open) return h + '<section class="card" style="padding:20px"><p style="color:var(--muted)">Make a name first. Reach <b>' + esc(d.need_rank_name) + '</b>.</p></section>';
     const left = (typeof leftText === 'function') ? leftText(d.refresh_at) : '';
     const heatWarn = d.heat >= 70 ? '<div class="card" style="padding:12px;border-color:var(--danger,#b5402f)"><b>You are running hot (' + d.heat + ').</b> Everything here adds more. Use Forged Papers or lie low.</div>' : '';
-    return h + '<p style="color:var(--muted);margin-bottom:' + (isPhone() ? '8' : '12') + 'px;font-size:' + (isPhone() ? '13' : '15') + 'px">Cash ' + money(d.cash_minor) + ' · Heat ' + d.heat + ' · stock turns over in ' + left + (isPhone() ? '.' : '. Everything sold here is hot: buying raises your heat.') + '</p>' + heatWarn +
+    const goods = '<p style="color:var(--muted);margin-bottom:' + (isPhone() ? '8' : '12') + 'px;font-size:' + (isPhone() ? '13' : '15') + 'px">Cash ' + money(d.cash_minor) + ' · Heat ' + d.heat + ' · stock turns over in ' + left + (isPhone() ? '.' : '. Everything sold here is hot: buying raises your heat.') + '</p>' + heatWarn +
       '<div class="grid g3">' + d.offers.map(ugCard).join('') + '</div>';
+    const sub = isPhone() ? curSub('underground', 'goods') : 'both';
+    if (sub === 'both') return h + goods + '<h2 style="font-size:20px;margin:18px 0 8px">The Back Room Wheel</h2><div class="grid g2" style="align-items:start">' + wheelPane() + '</div>';
+    const tabs = subTabs('underground', [['goods', 'Goods'], ['wheel', 'Wheel']]);
+    return h + tabs + (sub === 'wheel' ? wheelPane() : goods);
   }
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-act^="ug-"]'); if (!t || !cloud.on) return;
@@ -4317,6 +4321,76 @@ const ART = (function () {
     else if (a === 'ug-ask') { ugUi.ask = id; render(); }
     else if (a === 'ug-cancel') { ugUi.ask = null; render(); }
     else if (a === 'ug-confirm') ugBuy(id);
+  });
+
+  /* ---------- the Back Room Wheel: MOB tokens buy random prizes (online only, same rank gate as the Underground) ---------- */
+  const whUi = { data: null, at: 0, loading: false, err: '', ask: null, last: null, loadedFor: null };
+  const whTier = { common: ['Common', 'var(--muted)'], uncommon: ['Uncommon', '#6fae6a'], rare: ['Rare', '#5a8fd6'], jackpot: ['JACKPOT', 'var(--gold)'] };
+  async function loadWheel(quiet) {
+    if (!cloud.on) return;
+    try { const r = await rpc('game_wheel'); whUi.data = r.ok ? r : null; whUi.err = r.ok ? '' : (r.error || 'Could not reach the wheel.'); whUi.at = Date.now(); whUi.loadedFor = cloud.session && cloud.session.email; }
+    catch (e) {
+      if (e.signedOut) { showAuth(friendly(e)); return; }
+      whUi.err = (e.status === 404 || /could not find|function/i.test(e.message || '')) ? 'The wheel needs the latest database update (migration 0023). Ask whoever runs the game to install it.' : friendly(e);
+    } finally { if (ui.route === 'underground') render(); }
+  }
+  async function whCall(fn, args, okMsg) {
+    if (cloud.busy) return null;
+    cloud.busy = true; document.body.classList.add('busy'); whUi.ask = null; let out = null;
+    try {
+      const r = await rpc(fn, Object.assign({ p_key: newKey() }, args)); out = r;
+      if (!r || !r.ok) toast((r && r.error) || 'That did not work.', 'error');
+      else { if (r.results) whUi.last = r.results; if (okMsg) toast(okMsg(r), 'success'); }
+      try { const next = await pullState(); if (next) { S = next; saveExtras(); } } catch (e) { /* the next refresh will catch up */ }
+      await loadWheel(true);
+    } catch (e) { if (e.signedOut) showAuth(friendly(e)); else toast(friendly(e), 'error'); }
+    finally { cloud.busy = false; document.body.classList.remove('busy'); render(); }
+    return out;
+  }
+  const whBtn = (act, id, label, cls, extra) => '<button class="btn ' + (cls || '') + '" data-act="' + act + '"' + (id !== undefined && id !== null ? ' data-id="' + id + '"' : '') + (extra || '') + '>' + label + '</button>';
+  function wheelView(d) {
+    const ten = d.ten_cost, one = d.pull_cost;
+    const spin = (n, cost) => whUi.ask === n ? whBtn('wh-go', n, 'Spin x' + n + ' for ' + cost + ' tokens', '') + whBtn('wh-cancel', null, 'Cancel', 'ghost sm')
+      : whBtn('wh-ask', n, 'Spin x' + n + ' · ' + cost + ' tokens', n === 1 ? '' : 'ghost', d.tokens < cost ? ' disabled' : '');
+    const status = '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:8px"><h3 style="font-size:19px">The Back Room Wheel</h3>' +
+      '<div style="font-size:15px"><b class="num" style="color:var(--gold)">' + d.tokens + '</b> MOB token' + (d.tokens === 1 ? '' : 's') + ' · <b class="num">' + d.markers + '</b> marker' + (d.markers === 1 ? '' : 's') + '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' + spin(1, one) + spin(10, ten) + '</div>' +
+      '<div style="color:var(--muted);font-size:13px">Tokens come only from finishing story quests: ' + d.per_mission + ' per mission, +' + d.per_chapter + ' for a finished chapter. They cannot be bought, sent or sold.</div>' +
+      '<div style="color:var(--muted);font-size:13px">A Rare or better is guaranteed within <b>' + Math.max(0, d.pity_rare - d.since_rare) + '</b> spin' + (d.pity_rare - d.since_rare === 1 ? '' : 's') + '; a Jackpot within <b>' + Math.max(0, d.pity_jackpot - d.since_jackpot) + '</b>.</div></section>';
+    const last = whUi.last ? '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:5px"><h3 style="font-size:17px">Last spin</h3>' + whUi.last.map((x) => {
+      const t = whTier[x.tier] || whTier.common;
+      return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:14px"><span><b style="color:' + t[1] + '">' + t[0] + '</b> · ' + esc(x.label) + '</span><span style="color:var(--muted)">' + (x.converted ? '+' + x.markers + ' marker' + (x.markers > 1 ? 's' : '') : '') + '</span></div>';
+    }).join('') + '<div style="color:var(--muted);font-size:12.5px">A prize you cannot take (already owned, stack or bag full) becomes markers.</div></section>' : '';
+    const ex = '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:6px"><h3 style="font-size:17px">Trade markers for an item</h3>' + d.exchange.map((x) => {
+      const t = whTier[x.tier] || whTier.common;
+      return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:14px">' + esc(x.name) + ' <small style="color:' + t[1] + '">' + t[0] + '</small></span>' +
+        (x.owned ? '<span style="color:var(--muted);font-size:13px">Owned</span>' : whBtn('wh-ex', x.item_id, x.cost + ' markers', 'sm ghost', d.markers < x.cost ? ' disabled' : '')) + '</div>';
+    }).join('') + '</section>';
+    const odds = '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:4px"><h3 style="font-size:17px">The odds, in the open</h3>' + ['jackpot', 'rare', 'uncommon', 'common'].map((tier) => {
+      const ps = d.prizes.filter((p) => p.tier === tier), sum = ps.reduce((a, p) => a + p.odds, 0), t = whTier[tier];
+      return '<div style="font-size:13.5px"><b style="color:' + t[1] + '">' + t[0] + ' ' + sum.toFixed(1) + '%</b> <span style="color:var(--muted)">' + ps.map((p) => esc(p.label) + ' ' + p.odds + '%').join(' · ') + '</span></div>';
+    }).join('') + '</section>';
+    const hist = d.ledger.length ? '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:3px"><h3 style="font-size:17px">Token history</h3>' + d.ledger.map((x) => '<div style="display:flex;justify-content:space-between;font-size:13.5px"><span style="color:var(--muted)">' + esc(x.ref || x.type) + '</span><b style="color:' + (x.amount > 0 ? 'var(--gold)' : 'var(--text)') + '">' + (x.amount > 0 ? '+' : '') + x.amount + '</b></div>').join('') + '</section>' : '';
+    return status + last + ex + odds + hist;
+  }
+  function wheelPane() {
+    if (whUi.loadedFor !== (cloud.session && cloud.session.email) && !whUi.loading) { whUi.loading = true; setTimeout(() => { whUi.loading = false; loadWheel(true); }, 0); }
+    else if (Date.now() - whUi.at > 8000 && !cloud.busy) setTimeout(() => loadWheel(true), 0);
+    if (whUi.err) return '<section class="card" style="padding:18px"><p>' + esc(whUi.err) + '</p><button class="btn sm" data-act="wh-reload">Try again</button></section>';
+    if (!whUi.data) return '<p style="color:var(--muted)">Loading…</p>';
+    return wheelView(whUi.data);
+  }
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-act^="wh-"]'); if (!t || !cloud.on) return;
+    const a = t.dataset.act, id = t.dataset.id;
+    if (a === 'wh-reload') { whUi.err = ''; loadWheel(); }
+    else if (a === 'wh-cancel') { whUi.ask = null; render(); }
+    else if (a === 'wh-ask') { whUi.ask = Number(id); render(); }
+    else if (a === 'wh-go') whCall('game_wheel_pull', { p_count: Number(id) }, (r) => {
+      const best = r.results.slice().sort((x, y) => ['common', 'uncommon', 'rare', 'jackpot'].indexOf(y.tier) - ['common', 'uncommon', 'rare', 'jackpot'].indexOf(x.tier))[0];
+      return r.results.length === 1 ? 'You won: ' + best.label + '.' : 'Ten spins. Best: ' + best.label + '.';
+    }).then(() => { if (typeof cloudRefresh === 'function') cloudRefresh(true); });
+    else if (a === 'wh-ex') whCall('game_wheel_exchange', { p_item_id: id }, (r) => 'The ' + r.name + ' is yours.').then(() => { if (typeof cloudRefresh === 'function') cloudRefresh(true); });
   });
 
   /* ---------- Quick Supplies: buy and use consumables from any page (tap the energy chip) ---------- */
