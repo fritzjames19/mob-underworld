@@ -4395,10 +4395,10 @@ const ART = (function () {
   });
 
   /* ---------- The Daily Edition: "The Lakeshore Courier" (online only) ---------- */
-  const edUi = { data: null, at: 0, loading: false, err: '', fresh: false, dotAt: 0, ask: false, loadedFor: null };
+  const edUi = { streak: null, data: null, at: 0, loading: false, err: '', fresh: false, dotAt: 0, ask: false, loadedFor: null };
   async function loadEdition(quiet) {
     if (!cloud.on) return;
-    try { const r = await rpc('game_edition'); edUi.data = r.ok ? r : null; edUi.err = r.ok ? '' : (r.error || 'The paper did not come.'); edUi.at = Date.now(); edUi.fresh = false; edUi.loadedFor = cloud.session && cloud.session.email; }
+    try { const [r, st] = await Promise.all([rpc('game_edition'), rpc('game_streak').catch(() => null)]); edUi.streak = st && st.ok ? st : null; edUi.data = r.ok ? r : null; edUi.err = r.ok ? '' : (r.error || 'The paper did not come.'); edUi.at = Date.now(); edUi.fresh = !!(edUi.streak && !edUi.streak.claimed_today); edUi.loadedFor = cloud.session && cloud.session.email; }
     catch (e) {
       if (e.signedOut) { showAuth(friendly(e)); return; }
       edUi.err = (e.status === 404 || /could not find|function/i.test(e.message || '')) ? 'The paper needs the latest database update (migration 0024). Ask whoever runs the game to install it.' : friendly(e);
@@ -4435,6 +4435,29 @@ const ART = (function () {
       '<div style="font-size:13.5px;color:var(--muted)">' + esc(o.blurb) + '</div>' + (today ? '<div style="font-size:12.5px;color:var(--muted)">Needs rank: ' + esc(o.min_rank_name) + ' · ' + o.per_player + ' per player · closes in ' + edLeft(ends) + '</div>' : '') + act + '</div>';
   }
   const edNews = (list, empty) => list.length ? '<ul style="margin-left:18px;display:grid;gap:4px;font-size:14px">' + list.map((n) => '<li>' + esc(n.text) + '</li>').join('') + '</ul>' : '<p style="color:var(--muted);font-size:14px">' + empty + '</p>';
+  async function stClaim() {
+    if (cloud.busy) return;
+    cloud.busy = true; document.body.classList.add('busy');
+    try {
+      const r = await rpc('game_streak_claim', { p_key: newKey() });
+      if (!r || !r.ok) toast((r && r.error) || 'That did not work.', 'error');
+      else toast('Day ' + r.streak + ': ' + r.reward + (r.grace_used ? '. Your grace day saved the streak.' : '.') + (r.message ? ' ' + r.message : ''), 'success');
+      try { const next = await pullState(); if (next) { S = next; saveExtras(); } } catch (e) { /* the next refresh will catch up */ }
+      edUi.fresh = false; await loadEdition(true);
+    } catch (e) { if (e.signedOut) showAuth(friendly(e)); else toast(friendly(e), 'error'); }
+    finally { cloud.busy = false; document.body.classList.remove('busy'); render(); }
+  }
+  function streakView(st) {
+    const cells = st.rewards.map((x) => {
+      const done = x.day <= st.done, today = !st.claimed_today && x.day === st.pos;
+      return '<div style="border:1px solid ' + (today ? 'var(--gold)' : 'var(--line)') + ';border-radius:4px;padding:5px 3px;text-align:center;font-size:11.5px;line-height:1.25;' + (done ? 'background:rgba(200,160,70,.16);' : '') + '"><div style="color:var(--muted)">Day ' + x.day + '</div><div style="' + (done ? 'color:var(--gold)' : '') + '">' + (done ? '&#10003;' : '') + ' ' + esc(x.text.replace(' + ', '+')) + '</div></div>';
+    }).join('');
+    const warn = st.claimed_today ? '' : st.at_risk ? '<div style="color:var(--gold);font-size:13.5px">Sign today or the streak ends tonight.</div>' : st.grace_would_save ? '<div style="color:var(--gold);font-size:13.5px">You missed a day. Sign now and your grace day saves the streak.</div>' : st.broken ? '<div style="color:var(--muted);font-size:13.5px">Your ' + st.lost_streak + '-day streak ended. Start a new one today.</div>' : '';
+    return '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:8px"><h3 style="font-size:17px">Your streak: <span class="num" style="color:var(--gold)">' + st.streak + '</span> day' + (st.streak === 1 ? '' : 's') + (st.best > st.streak ? ' <small style="color:var(--muted)">(best ' + st.best + ')</small>' : '') + '</h3>' +
+      '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">' + cells + '</div>' + warn +
+      (st.claimed_today ? '<div style="color:var(--muted);font-size:13.5px">Signed today. Come back tomorrow for day ' + (st.pos === 7 ? 1 : st.pos + 1) + '.</div>' : lawBtn('st-claim', null, 'Sign the ledger · ' + esc(st.next_reward), '')) +
+      '<div style="color:var(--muted);font-size:12.5px">One missed day is forgiven, once every 7 days (' + (st.grace_ready ? 'grace day ready' : 'ready again in ' + st.grace_days_left + ' day' + (st.grace_days_left === 1 ? '' : 's')) + '). Bigger bonuses at 14 and 30 days' + (st.next_milestone ? '; next at ' + st.next_milestone : '') + '.</div></section>';
+  }
   function editionView(d) {
     const t = d.today, y = d.yesterday;
     const masthead = '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:4px;text-align:center"><div style="font-family:Georgia,serif;font-size:26px;letter-spacing:1px;color:var(--gold)">The Lakeshore Courier</div><div style="color:var(--muted);font-size:13px">' + esc(t.date) + ' · Two cents</div></section>';
@@ -4450,7 +4473,7 @@ const ART = (function () {
     const you = d.you, net = you.net_cash_minor;
     const rec = '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:4px"><h3 style="font-size:17px">Your yesterday</h3><div style="font-size:14px">' + (you.jobs > 0 ? 'You finished <b>' + you.jobs + '</b> job' + (you.jobs > 1 ? 's' : '') + ' and your cash moved <b style="color:' + (net >= 0 ? 'var(--gold)' : 'var(--text)') + '">' + (net >= 0 ? '+' : '-') + money(Math.abs(net)) + '</b>.' : 'You did not do any work yesterday. The city carried on without you.') + '</div>' +
       (you.got_offer ? '' : '<div style="font-size:13.5px;color:var(--muted)">You missed yesterday\'s offer. Today\'s is above, and it closes in ' + edLeft(d.ends_at) + '.</div>') + '</section>';
-    return masthead + today + yday + todayNews + rec;
+    return masthead + (edUi.streak ? streakView(edUi.streak) : '') + today + yday + todayNews + rec;
   }
   function pageEdition() {
     if (edUi.loadedFor !== (cloud.session && cloud.session.email) && !edUi.loading) { edUi.loading = true; setTimeout(() => { edUi.loading = false; loadEdition(true); }, 0); }
@@ -4461,11 +4484,12 @@ const ART = (function () {
     return h + '<div class="grid g2" style="align-items:start">' + editionView(edUi.data) + '</div>';
   }
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-act^="ed-"]'); if (!t || !cloud.on) return;
+    const t = e.target.closest('[data-act^="ed-"], [data-act="st-claim"]'); if (!t || !cloud.on) return;
     const a = t.dataset.act;
     if (a === 'ed-reload') { edUi.err = ''; loadEdition(); }
     else if (a === 'ed-ask') { edUi.ask = true; render(); }
     else if (a === 'ed-cancel') { edUi.ask = false; render(); }
+    else if (a === 'st-claim') stClaim();
     else if (a === 'ed-go') edClaim(t.dataset.id).then(() => { if (typeof cloudRefresh === 'function') cloudRefresh(true); });
   });
 
