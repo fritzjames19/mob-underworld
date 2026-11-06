@@ -2498,6 +2498,7 @@ const ART = (function () {
   /* ---------- app state ---------- */
   const ROUTES = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dash' },
+    { id: 'edition', label: 'The Paper', icon: 'book', gate: 'online' },
     { id: 'jobs', label: 'Job Board', icon: 'brief' },
     { id: 'city', label: 'City', icon: 'map' },
     { id: 'inventory', label: 'Inventory', icon: 'pack' },
@@ -2588,7 +2589,7 @@ const ART = (function () {
     $('#sidebar').innerHTML =
       '<div class="brand"><div class="brand-mark">M<span>O</span>B</div><div class="brand-sub">The Underworld</div></div>' +
       '<nav class="nav" aria-label="Pages">' +
-      ROUTES.filter((r) => !r.hidden && (!r.gate || (cloud.on && (r.gate !== 'underground' || ugRankOk())))).map((r) => '<button data-act="nav" data-route="' + r.id + '"' + (ui.route === r.id ? ' aria-current="page"' : '') + '>' + icon(r.icon, 19) + '<span>' + r.label + '</span>' + (r.id === 'crew' ? crewDot() : r.id === 'law' ? lawDot() : '') + '</button>').join('') +
+      ROUTES.filter((r) => !r.hidden && (!r.gate || (cloud.on && (r.gate !== 'underground' || ugRankOk())))).map((r) => '<button data-act="nav" data-route="' + r.id + '"' + (ui.route === r.id ? ' aria-current="page"' : '') + '>' + icon(r.icon, 19) + '<span>' + r.label + '</span>' + (r.id === 'crew' ? crewDot() : r.id === 'law' ? lawDot() : r.id === 'edition' ? edDot() : '') + '</button>').join('') +
       '</nav>' +
       '<div class="side-user"><div class="frame" style="padding:2px;border-width:1px">' + portrait(p.portrait, 44) + '</div><div class="who"><b>' + esc(p.name) + '</b><span>' + esc(rank) + '</span></div>' +
       '<button class="icon-btn" data-act="nav" data-route="settings" aria-label="Settings"' + (ui.route === 'settings' ? ' aria-current="page"' : '') + '>' + icon('sliders', 18) + '</button></div>';
@@ -3261,7 +3262,7 @@ const ART = (function () {
   }
 
   /* ---------- render ---------- */
-  const PAGES = { dashboard: pageDashboard, jobs: pageJobs, city: pageCity, inventory: pageInventory, shop: pageShop, businesses: pageBusinesses, crew: pageCrew, territory: pageTerritory, underground: pageUnderground, law: pageLaw, titles: pageTitles, rankings: pageRankings, profile: pageProfile, settings: pageSettings };
+  const PAGES = { dashboard: pageDashboard, jobs: pageJobs, city: pageCity, inventory: pageInventory, shop: pageShop, businesses: pageBusinesses, crew: pageCrew, territory: pageTerritory, underground: pageUnderground, law: pageLaw, edition: pageEdition, titles: pageTitles, rankings: pageRankings, profile: pageProfile, settings: pageSettings };
   function render() {
     renderSidebar(); renderTopbar(); renderTabbar();
     const view = $('#view');
@@ -3272,7 +3273,7 @@ const ART = (function () {
     applyPaging();
     renderModal();
     animateBars();
-    const names = { dashboard: 'Dashboard', jobs: 'Job Board', city: 'City', inventory: 'Inventory', shop: 'Equipment Shop', businesses: 'Businesses', crew: 'Crew', territory: 'Territory', underground: 'Underground', law: 'The Law', titles: 'Titles', rankings: 'Rankings', profile: 'Profile', settings: 'Settings' };
+    const names = { dashboard: 'Dashboard', jobs: 'Job Board', city: 'City', inventory: 'Inventory', shop: 'Equipment Shop', businesses: 'Businesses', crew: 'Crew', territory: 'Territory', underground: 'Underground', law: 'The Law', edition: 'The Paper', titles: 'Titles', rankings: 'Rankings', profile: 'Profile', settings: 'Settings' };
     document.title = names[ui.route] + ' · MOB: The Underworld';
   }
 
@@ -4391,6 +4392,81 @@ const ART = (function () {
       return r.results.length === 1 ? 'You won: ' + best.label + '.' : 'Ten spins. Best: ' + best.label + '.';
     }).then(() => { if (typeof cloudRefresh === 'function') cloudRefresh(true); });
     else if (a === 'wh-ex') whCall('game_wheel_exchange', { p_item_id: id }, (r) => 'The ' + r.name + ' is yours.').then(() => { if (typeof cloudRefresh === 'function') cloudRefresh(true); });
+  });
+
+  /* ---------- The Daily Edition: "The Lakeshore Courier" (online only) ---------- */
+  const edUi = { data: null, at: 0, loading: false, err: '', fresh: false, dotAt: 0, ask: false, loadedFor: null };
+  async function loadEdition(quiet) {
+    if (!cloud.on) return;
+    try { const r = await rpc('game_edition'); edUi.data = r.ok ? r : null; edUi.err = r.ok ? '' : (r.error || 'The paper did not come.'); edUi.at = Date.now(); edUi.fresh = false; edUi.loadedFor = cloud.session && cloud.session.email; }
+    catch (e) {
+      if (e.signedOut) { showAuth(friendly(e)); return; }
+      edUi.err = (e.status === 404 || /could not find|function/i.test(e.message || '')) ? 'The paper needs the latest database update (migration 0024). Ask whoever runs the game to install it.' : friendly(e);
+    } finally { if (ui.route === 'edition') render(); }
+  }
+  async function edDotPoll() {
+    if (!cloud.on || document.hidden || cloud.busy || ui.route === 'edition') return;
+    try { const r = await rpc('game_edition_dot'); const f = !!(r && r.ok && r.fresh); if (f !== edUi.fresh) { edUi.fresh = f; render(); } } catch (e) { /* the next poll will catch up */ }
+  }
+  setInterval(edDotPoll, 120000); setTimeout(edDotPoll, 4000);
+  function edDot() { return edUi.fresh ? '<span class="badge-dot" role="status" aria-label="A new edition of the paper is out">!</span>' : ''; }
+  async function edClaim(oppId) {
+    if (cloud.busy) return;
+    cloud.busy = true; document.body.classList.add('busy'); edUi.ask = false;
+    try {
+      const r = await rpc('game_edition_claim', { p_key: newKey(), p_opp_id: oppId });
+      if (!r || !r.ok) toast((r && r.error) || 'That did not work.', 'error');
+      else toast(r.cash_minor_gained ? 'Yours: ' + money(r.cash_minor_gained) + '. ' + r.left + ' left in the city.' : 'Yours: ' + r.name + ' for ' + money(r.price_minor) + '. ' + r.left + ' left in the city.', 'success');
+      try { const next = await pullState(); if (next) { S = next; saveExtras(); } } catch (e) { /* the next refresh will catch up */ }
+      await loadEdition(true);
+    } catch (e) { if (e.signedOut) showAuth(friendly(e)); else toast(friendly(e), 'error'); }
+    finally { cloud.busy = false; document.body.classList.remove('busy'); render(); }
+  }
+  const edEffects = (e) => [e.stop_pct !== 100 ? 'patrols ' + (e.stop_pct > 100 ? (e.stop_pct - 100) + '% more often' : (100 - e.stop_pct) + '% rarer') : '', e.bribe_pct !== 100 ? 'bribes ' + (100 - e.bribe_pct) + '% cheaper' : '',
+    e.heat_pct !== 100 ? 'job heat ' + (e.heat_pct > 100 ? '+' + (e.heat_pct - 100) : '-' + (100 - e.heat_pct)) + '%' : '', e.vote_pct !== 100 ? 'votes x' + e.vote_pct / 100 : '', e.gift_pct !== 100 ? 'envelopes +' + (e.gift_pct - 100) + '%' : ''].filter(Boolean).join(' · ');
+  const edLeft = (ms) => { const m = Math.max(0, Math.floor((ms - Date.now()) / 60000)); return Math.floor(m / 60) + 'h ' + (m % 60) + 'm'; };
+  function edOppCard(o, today, ends) {
+    const gone = o.left <= 0, mine = o.mine >= o.per_player;
+    const what = o.kind === 'cash' ? 'Free: ' + money(o.cash_minor) : money(o.price_minor) + (o.qty > 1 ? ' for ' + o.qty : '');
+    let act = '';
+    if (today) act = gone ? '<span style="color:var(--muted)">Sold out.</span>' : mine ? '<span style="color:var(--gold)">Yours.</span>' : edUi.ask ? '<div style="display:flex;gap:8px;flex-wrap:wrap">' + lawBtn('ed-go', o.id, 'Take it: ' + what, '') + lawBtn('ed-cancel', null, 'Cancel', 'ghost sm') + '</div>' : lawBtn('ed-ask', o.id, 'Grab it · ' + what, '');
+    else act = '<span style="color:var(--muted)">' + (o.mine > 0 ? '<b style="color:var(--gold)">You got one.</b> ' : 'You were not there. ') + (gone ? 'All ' + o.supply + ' sold out' + (o.sold_out_at ? ' at ' + new Date(o.sold_out_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '') + '.' : o.taken + ' of ' + o.supply + ' taken.') + '</span>';
+    return '<div style="border:1px solid var(--line);border-radius:4px;padding:10px;display:grid;gap:5px"><div style="display:flex;justify-content:space-between;gap:8px"><b>' + esc(o.name) + '</b>' + (today ? '<span class="num" style="color:' + (gone ? 'var(--muted)' : 'var(--gold)') + '">' + o.left + '/' + o.supply + ' left</span>' : '') + '</div>' +
+      '<div style="font-size:13.5px;color:var(--muted)">' + esc(o.blurb) + '</div>' + (today ? '<div style="font-size:12.5px;color:var(--muted)">Needs rank: ' + esc(o.min_rank_name) + ' · ' + o.per_player + ' per player · closes in ' + edLeft(ends) + '</div>' : '') + act + '</div>';
+  }
+  const edNews = (list, empty) => list.length ? '<ul style="margin-left:18px;display:grid;gap:4px;font-size:14px">' + list.map((n) => '<li>' + esc(n.text) + '</li>').join('') + '</ul>' : '<p style="color:var(--muted);font-size:14px">' + empty + '</p>';
+  function editionView(d) {
+    const t = d.today, y = d.yesterday;
+    const masthead = '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:4px;text-align:center"><div style="font-family:Georgia,serif;font-size:26px;letter-spacing:1px;color:var(--gold)">The Lakeshore Courier</div><div style="color:var(--muted);font-size:13px">' + esc(t.date) + ' · Two cents</div></section>';
+    const today = '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:8px"><h3 style="font-size:17px">Today</h3>' +
+      '<div><div style="font-family:Georgia,serif;font-size:19px;font-weight:700">' + esc(t.event.headline) + '</div><div style="font-size:14px;color:var(--muted)">' + esc(t.event.blurb) + '</div><div style="font-size:12.5px;color:var(--gold)">' + esc(t.event.name) + ': ' + (edEffects(t.event) || 'no change') + '</div></div>' +
+      '<div style="font-family:Georgia,serif;font-size:17px;font-weight:700">' + esc(t.opp.headline) + '</div>' + edOppCard(t.opp, true, d.ends_at) + '</section>';
+    const todayNews = '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:6px"><h3 style="font-size:17px">So far today</h3>' + edNews(t.news, 'Nothing yet. Be the first to make the paper.') + '</section>';
+    const big = y.biggest ? '<div style="font-size:14px">Biggest score: <b>' + esc(y.biggest.name) + '</b> walked off with <b style="color:var(--gold)">' + money(y.biggest.cash_minor) + '</b>.</div>' : '';
+    const elect = y.election ? '<div style="font-size:14px"><b>Election results:</b><ul style="margin-left:18px">' + y.election.map((x) => '<li>' + esc(x.district) + ': ' + esc(x.candidate) + ' (' + esc(x.platform) + ')</li>').join('') + '</ul></div>' : '';
+    const yday = '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:8px"><h3 style="font-size:17px">Yesterday, ' + esc(y.date) + '</h3>' +
+      '<div style="font-family:Georgia,serif;font-size:17px;font-weight:700">' + esc(y.event.headline) + '</div>' + edNews(y.news, 'A quiet day in the city. Nobody made the paper.') + big + elect +
+      '<div style="font-family:Georgia,serif;font-size:17px;font-weight:700">' + esc(y.opp.headline) + '</div>' + edOppCard(y.opp, false, 0) + '</section>';
+    const you = d.you, net = you.net_cash_minor;
+    const rec = '<section data-pg="item" class="card" style="padding:14px;display:grid;gap:4px"><h3 style="font-size:17px">Your yesterday</h3><div style="font-size:14px">' + (you.jobs > 0 ? 'You finished <b>' + you.jobs + '</b> job' + (you.jobs > 1 ? 's' : '') + ' and your cash moved <b style="color:' + (net >= 0 ? 'var(--gold)' : 'var(--text)') + '">' + (net >= 0 ? '+' : '-') + money(Math.abs(net)) + '</b>.' : 'You did not do any work yesterday. The city carried on without you.') + '</div>' +
+      (you.got_offer ? '' : '<div style="font-size:13.5px;color:var(--muted)">You missed yesterday\'s offer. Today\'s is above, and it closes in ' + edLeft(d.ends_at) + '.</div>') + '</section>';
+    return masthead + today + yday + todayNews + rec;
+  }
+  function pageEdition() {
+    if (edUi.loadedFor !== (cloud.session && cloud.session.email) && !edUi.loading) { edUi.loading = true; setTimeout(() => { edUi.loading = false; loadEdition(true); }, 0); }
+    else if (Date.now() - edUi.at > 8000 && !cloud.busy) setTimeout(() => loadEdition(true), 0);
+    const h = '<div class="page-head"><h1>The Paper</h1></div>';
+    if (edUi.err) return h + '<section class="card" style="padding:18px"><p>' + esc(edUi.err) + '</p><button class="btn sm" data-act="ed-reload">Try again</button></section>';
+    if (!edUi.data) return h + '<p style="color:var(--muted)">The presses are rolling…</p>';
+    return h + '<div class="grid g2" style="align-items:start">' + editionView(edUi.data) + '</div>';
+  }
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-act^="ed-"]'); if (!t || !cloud.on) return;
+    const a = t.dataset.act;
+    if (a === 'ed-reload') { edUi.err = ''; loadEdition(); }
+    else if (a === 'ed-ask') { edUi.ask = true; render(); }
+    else if (a === 'ed-cancel') { edUi.ask = false; render(); }
+    else if (a === 'ed-go') edClaim(t.dataset.id).then(() => { if (typeof cloudRefresh === 'function') cloudRefresh(true); });
   });
 
   /* ---------- Quick Supplies: buy and use consumables from any page (tap the energy chip) ---------- */
