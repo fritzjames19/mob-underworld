@@ -2788,7 +2788,7 @@ const ART = (function () {
       meter('ht', 'Heat', 'flame', p.heat, MOB.CONFIG.maxHeat, 'heat', MOB.heatBand(p.heat)) +
       '<div class="stat-row"><div class="lbl"><span>Experience</span><b>' + (pr.next ? pr.into + ' / ' + pr.span : 'Top rank') + '</b></div>' + bar('xp', pr.pct, '', 'Experience toward next rank') +
       (pr.next ? '<div style="font-size:12px;color:var(--muted)">Next rank: ' + esc(pr.next.name) + ' at ' + MOB.fmtNum(pr.next.xp) + ' XP</div>' : '') + '</div>' +
-      '<div class="kv"><div><small>Cash</small><b class="gold num">' + money(p.cashMinor) + '</b></div><div><small>Respect</small><b class="num">' + MOB.fmtNum(p.respect) + '</b></div></div>' +
+      '<div class="kv"><div><small>Cash</small><b class="gold num">' + money(p.cashMinor) + '</b></div><div><small>Respect</small><b class="num">' + MOB.fmtNum(p.respect) + '</b></div>' + (typeof tokenCell === 'function' ? tokenCell() : '') + '</div>' +
       pointsNote + '<div style="display:grid;gap:10px">' + attrs + '</div>' +
       '<button class="btn ghost sm" data-act="patch-up"' + (p.health >= eff.maxHealth ? ' disabled' : '') + '>' + icon('cross', 15) + 'See the back-alley doctor (' + money(MOB.CONFIG.patchUpCostMinor) + ')</button></section>';
 
@@ -3055,7 +3055,7 @@ const ART = (function () {
         meter('en', 'Energy', 'bolt', p.energy, eff.maxEnergy, 'en', '+1 per 5 min') +
         meter('ht', 'Heat', 'flame', p.heat, MOB.CONFIG.maxHeat, 'heat', MOB.heatBand(p.heat)) +
         '<div class="stat-row"><div class="lbl"><span>Experience</span><b>' + (pr.next ? pr.into + ' / ' + pr.span : 'Top rank') + '</b></div>' + bar('xp', pr.pct, '', 'Experience toward next rank') + '</div>' +
-        '<div class="kv"><div><small>Cash</small><b class="gold num">' + money(p.cashMinor) + '</b></div><div><small>Respect</small><b class="num">' + MOB.fmtNum(p.respect) + '</b></div></div>' +
+        '<div class="kv"><div><small>Cash</small><b class="gold num">' + money(p.cashMinor) + '</b></div><div><small>Respect</small><b class="num">' + MOB.fmtNum(p.respect) + '</b></div>' + (typeof tokenCell === 'function' ? tokenCell() : '') + '</div>' +
         '<button class="btn ghost sm" data-act="patch-up"' + (p.health >= eff.maxHealth ? ' disabled' : '') + '>' + icon('cross', 15) + 'Back-alley doctor (' + money(MOB.CONFIG.patchUpCostMinor) + ')</button></section>' +
         activeJobBanner() + combatBanner();
     } else if (sub === 'stats') {
@@ -4333,7 +4333,7 @@ const ART = (function () {
     catch (e) {
       if (e.signedOut) { showAuth(friendly(e)); return; }
       whUi.err = (e.status === 404 || /could not find|function/i.test(e.message || '')) ? 'The wheel needs the latest database update (migration 0023). Ask whoever runs the game to install it.' : friendly(e);
-    } finally { if (ui.route === 'underground') render(); }
+    } finally { if (ui.route === 'underground' || ui.route === 'dashboard') render(); }
   }
   async function whCall(fn, args, okMsg) {
     if (cloud.busy) return null;
@@ -4393,6 +4393,17 @@ const ART = (function () {
     }).then(() => { if (typeof cloudRefresh === 'function') cloudRefresh(true); });
     else if (a === 'wh-ex') whCall('game_wheel_exchange', { p_item_id: id }, (r) => 'The ' + r.name + ' is yours.').then(() => { if (typeof cloudRefresh === 'function') cloudRefresh(true); });
   });
+
+  /* the dashboard shows the MOB token balance for everyone, even before the wheel unlocks */
+  function tokenCell() {
+    if (!cloud.on) return '';
+    if (!whUi.data && !whUi.err && !whUi.loading) { whUi.loading = true; setTimeout(() => { whUi.loading = false; loadWheel(true); }, 0); }
+    else if (whUi.data && Date.now() - whUi.at > 15000 && !cloud.busy && !whUi.loading) { whUi.loading = true; setTimeout(() => { whUi.loading = false; loadWheel(true); }, 0); }
+    const d = whUi.data;
+    if (!d) return '<div style="grid-column:1 / -1"><small>MOB tokens</small><b class="num" style="color:var(--gold)">…</b></div>';
+    const hint = d.locked ? 'Earned from story quests. The wheel opens at ' + esc(d.min_rank) + '.' : 'Earned from story quests. Spend them at the Back Room Wheel.';
+    return '<div style="grid-column:1 / -1;display:flex;justify-content:space-between;align-items:center;gap:10px"><div><small>MOB tokens</small><b class="num" style="color:var(--gold)">' + d.tokens + '</b></div><div style="font-size:12.5px;color:var(--muted);text-align:right;max-width:60%">' + hint + '</div></div>';
+  }
 
   /* ---------- The Daily Edition: "The Lakeshore Courier" (online only) ---------- */
   const edUi = { streak: null, data: null, at: 0, loading: false, err: '', fresh: false, dotAt: 0, ask: false, loadedFor: null };
