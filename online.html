@@ -616,19 +616,40 @@ body.busy, body.busy * { cursor: progress; }
 :root { --tb: 62px; }
 @media (min-width: 901px) {
   :root { --tb: 0px; }
-  body.phone main > div, body.phone .pager { max-width: 860px; margin-left: auto; margin-right: auto; }
-  body.phone .pager { left: 24px; right: 24px; }
-  body.phone main { padding-left: 24px; padding-right: 24px; }
-  body.phone .modal-back { align-items: center; padding: 16px; }
-  body.phone .modal { max-width: 720px; width: 100%; border-radius: 8px; max-height: 94dvh; }
-  body.phone .grid, body.phone .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  body.phone .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  body.phone .item-grid, body.phone .shop-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  body.phone main { max-width: none; padding: 14px 32px calc(var(--tb) + 8px); }
+  body.phone main:focus-visible, body.phone #view:focus { outline: none; }
+  body.phone .pc-compact .bar { height: clamp(9px, 1.5vh, 16px); }
+  body.phone .pc-compact { gap: clamp(6px, 1.8vh, 20px); font-size: 16px; }
+  body.phone .pc-compact .lbl { font-size: 14px; }
+  body.phone .pc-compact .kv > div { padding: clamp(5px, 1.4vh, 14px) 16px; }
+  body.phone .pc-compact .kv b { font-size: clamp(18px, 2.6vh, 26px); }
+  body.phone .pager { left: 32px; right: 32px; }
+  body.phone .page-title { font-size: 34px; }
+  body.phone .sec-title { font-size: 22px; }
+  body.phone .page-head { margin-bottom: 12px; }
+  body.phone .subtab { min-height: 46px; font-size: 15px; }
+  body.phone .modal-back { align-items: center; padding: 20px; }
+  body.phone .modal { max-width: 900px; width: 100%; border-radius: 8px; max-height: 94dvh; }
+  body.phone .grid, body.phone .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  body.phone .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  body.phone .item-grid, body.phone .shop-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)) !important; gap: 14px; }
+  body.phone .thumb { padding: 10px; gap: 6px; }
+  body.phone .thumb .art { height: clamp(90px, 16vh, 170px); }
+  body.phone .thumb .art svg { width: 76px; height: 76px; }
+  body.phone .thumb .t-name { font-size: 15px; }
+  body.phone .thumb .t-price { font-size: 17px; }
+  body.phone .biz-art { height: clamp(90px, 20vh, 190px) !important; }
+  body.phone .card.district .art { display: block; height: clamp(70px, 14vh, 130px); }
+  body.phone .item .art, body.phone .item .art.has-photo { min-height: 110px; }
+  body.phone .pc-compact { padding: clamp(10px, 2vh, 20px); }
+  body.phone .pc-row { grid-template-columns: clamp(64px, 9vh, 96px) minmax(0, 1fr); }
+  body.phone .pc-name { font-size: 30px; }
+  body.phone .pc-compact .kv b { font-size: 22px; }
   .nav button { padding: 8px 14px; }
   .music-ctl { left: 12px; bottom: 82px; }
 }
 @media (min-width: 901px) and (max-height: 820px) { .nav button { padding: 5px 14px; } .nav { padding: 8px 10px; gap: 0; } }
-@media (min-width: 901px) and (max-height: 700px) { .nav button { padding: 3px 12px; font-size: 13px; } .brand, .sidebar .brand { transform-origin: left; } }
+@media (min-width: 901px) and (max-height: 700px) { body.phone .page-title { font-size: 26px; } body.phone main { padding-top: 8px; } body.phone .pc-compact .meter, body.phone .pc-compact .stat-row { margin: 0; } body.phone .pc-compact .lbl { font-size: 12px; } body.phone .pc-compact .pc-name { font-size: 24px; } body.phone .pc-compact { gap: 3px; padding: 8px 12px; } body.phone .pc-compact .kv > div { padding: 3px 12px; } body.phone .pc-compact .kv b { font-size: 17px; } body.phone .pc-compact .btn { min-height: 30px; } body.phone .pc-row { grid-template-columns: 56px minmax(0,1fr); } .nav button { padding: 3px 12px; font-size: 13px; } .brand, .sidebar .brand { transform-origin: left; } }
 </style>
 <div class="app" id="app">
   <aside class="sidebar" id="sidebar" aria-label="Main navigation"></aside>
