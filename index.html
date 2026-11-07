@@ -514,10 +514,10 @@ body.busy, body.busy * { cursor: progress; }
 .auth .field { margin-bottom: 10px; }
 /* ---------- phone: one screen per page (<=700px) ---------- */
 .pager, .subtabs { display: none; }
-@media (max-width: 700px) {
   body.phone .app { height: 100dvh; overflow: hidden; }
   body.phone .shell { display: flex; flex-direction: column; height: 100dvh; min-height: 0; }
   body.phone .shell > .topbar { flex: 0 0 auto; }
+  body.phone .biz-art { height: 88px !important; min-height: 0; overflow: hidden; } body.phone .biz-art img, body.phone .biz-art svg { width: 100%; height: 100%; object-fit: cover; }
   body.phone .pc-compact { padding: 12px; display: grid; gap: 8px; }
   body.phone .pc-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: center; }
   body.phone .pc-row .frame { padding: 2px; }
@@ -527,14 +527,14 @@ body.busy, body.busy * { cursor: progress; }
   body.phone .pc-compact .kv > div { padding: 6px 10px; }
   body.phone .pc-compact .kv b { font-size: 17px; }
   body.phone .pc-compact .lbl { font-size: 11px; }
-  body.phone main { flex: 1 1 auto; min-height: 0; padding: 10px 12px calc(62px + env(safe-area-inset-bottom, 0px)); overflow: hidden; position: relative; }
+  body.phone main { flex: 1 1 auto; min-height: 0; padding: 10px 12px calc(var(--tb) + env(safe-area-inset-bottom, 0px)); overflow: hidden; position: relative; }
   body.phone main > div:not(.pager) { height: 100%; overflow-y: auto; overscroll-behavior: contain; }
   body.phone main.has-pager > div:not(.pager) { overflow: hidden; }
   body.phone .eyebrow, body.phone .page-sub { display: none; }
   body.phone .page-head { margin-bottom: 8px; }
   body.phone .page-title { font-size: 24px; margin: 0; }
   body.phone .pg-hide { display: none !important; }
-  body.phone .pager { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; position: absolute; left: 12px; right: 12px; bottom: calc(62px + env(safe-area-inset-bottom, 0px)); z-index: 5; padding: 6px 0; background: var(--bg, #0e0d0d); }
+  body.phone .pager { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; position: absolute; left: 12px; right: 12px; bottom: calc(var(--tb) + env(safe-area-inset-bottom, 0px)); z-index: 5; padding: 6px 0; background: var(--bg, #0e0d0d); }
   body.phone .pager .btn { min-height: 40px; }
   body.phone .pager .btn:last-child { justify-self: end; }
   body.phone .pg-count { color: var(--muted); font-size: 13px; }
@@ -611,7 +611,120 @@ body.busy, body.busy * { cursor: progress; }
   body.phone .detail-art.has-photo img { max-height: 96px; width: auto; }
   body.phone .photo-note { display: none; }
   body.phone .modal-body > p { font-size: 15px !important; line-height: 1.35 !important; }
-  body.phone .toasts { bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }
+  body.phone .toasts { bottom: calc(var(--tb) + 50px + env(safe-area-inset-bottom, 0px)); }
+
+:root { --tb: 62px; }
+@media (min-width: 901px) {
+  :root { --tb: 0px; }
+  body.phone main { max-width: none; padding: 14px 32px calc(var(--tb) + 8px); }
+  body.phone main:focus-visible, body.phone #view:focus { outline: none; }
+  body.phone .pc-compact .bar { height: clamp(9px, 1.5vh, 16px); }
+  body.phone .pc-compact { gap: clamp(6px, 1.8vh, 20px); font-size: 16px; }
+  body.phone .pc-compact .lbl { font-size: 14px; }
+  body.phone .pc-compact .kv > div { padding: clamp(5px, 1.4vh, 14px) 16px; }
+  body.phone .pc-compact .kv b { font-size: clamp(18px, 2.6vh, 26px); }
+  body.phone .pager { left: 32px; right: 32px; }
+  body.phone .page-title { font-size: 34px; }
+  body.phone .sec-title { font-size: 22px; }
+  body.phone .page-head { margin-bottom: 12px; }
+  body.phone .subtab { min-height: 46px; font-size: 15px; }
+  body.phone .modal-back { align-items: center; padding: 20px; }
+  body.phone .modal { max-width: 900px; width: 100%; border-radius: 8px; max-height: 94dvh; }
+  body.phone .grid, body.phone .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  body.phone .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  body.phone .item-grid, body.phone .shop-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)) !important; gap: 14px; }
+  body.phone .thumb { padding: 10px; gap: 6px; }
+  body.phone .thumb .art { height: clamp(90px, 16vh, 170px); }
+  body.phone .thumb .art svg { width: 76px; height: 76px; }
+  body.phone .thumb .t-name { font-size: 15px; }
+  body.phone .thumb .t-price { font-size: 17px; }
+  body.phone .biz-art { height: clamp(90px, 20vh, 190px) !important; }
+  body.phone .card.district .art { display: block; height: clamp(70px, 14vh, 130px); }
+  body.phone .item .art, body.phone .item .art.has-photo { min-height: 110px; }
+  body.phone .pc-compact { padding: clamp(10px, 2vh, 20px); }
+  body.phone .pc-row { grid-template-columns: clamp(64px, 9vh, 96px) minmax(0, 1fr); }
+  body.phone .pc-name { font-size: 30px; }
+  body.phone .pc-compact .kv b { font-size: 22px; }
+  .nav button { padding: 8px 14px; }
+  .music-ctl { left: 12px; bottom: 82px; }
+}
+@media (min-width: 901px) and (max-height: 1000px) { .nav { gap: 4px; padding: 10px 12px; } .nav button { padding: 7px 14px; } }
+@media (min-width: 901px) and (max-height: 820px) { .nav button { padding: 5px 14px; } .nav { padding: 8px 10px; gap: 0; } }
+@media (min-width: 901px) and (max-height: 700px) { body.phone .page-title { font-size: 26px; } body.phone main { padding-top: 8px; } body.phone .pc-compact .meter, body.phone .pc-compact .stat-row { margin: 0; } body.phone .pc-compact .lbl { font-size: 12px; } body.phone .pc-compact .pc-name { font-size: 24px; } body.phone .pc-compact { gap: 3px; padding: 8px 12px; } body.phone .pc-compact .kv > div { padding: 3px 12px; } body.phone .pc-compact .kv b { font-size: 17px; } body.phone .pc-compact .btn { min-height: 30px; } body.phone .pc-row { grid-template-columns: 56px minmax(0,1fr); } .nav button { padding: 3px 12px; font-size: 13px; } .brand, .sidebar .brand { transform-origin: left; } }
+
+/* ---------- desktop "gangster HUD" shell + Home screen ---------- */
+.tb-player, .tb-stats { display: none; }
+.home-grid { display: grid; grid-template-columns: minmax(0, 1fr) clamp(300px, 24vw, 380px); gap: 14px; align-items: start; }
+.hm-map { position: relative; container-type: inline-size; aspect-ratio: 1012 / 460; border: 1px solid var(--gold-dim); border-radius: 4px; overflow: hidden; background: #0b0a0a; box-shadow: 0 0 0 3px #0e0d0d, 0 0 0 4px var(--gold-dim); }
+.hm-map > img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.hm-temp { position: absolute; right: 8px; bottom: 8px; }
+.hm-plate { position: absolute; display: grid; place-content: center; gap: 1px; text-align: center; padding: 2px 6px; cursor: pointer; border-radius: 5px;
+  background: linear-gradient(180deg, #1c1816, #0d0b0a); border: 1px solid var(--gold); box-shadow: 0 0 14px rgba(0,0,0,.8), inset 0 0 0 1px rgba(0,0,0,.6); color: var(--text); }
+.hm-plate b { font: 700 clamp(10px, 1.75cqw, 19px)/1.05 var(--font-head); letter-spacing: .02em; }
+.hm-plate small { font-size: clamp(8px, 1.05cqw, 12px); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+.hm-plate:hover:not(:disabled) { background: linear-gradient(180deg, #3a1517, #1a0b0c); }
+.hm-plate.here { border-color: var(--burg-hi); background: linear-gradient(180deg, #4a1a1d, #1d0c0d); cursor: default; }
+.hm-plate.here small { color: #f0c9a0; }
+.hm-plate.locked { filter: grayscale(.6) brightness(.8); }
+.hm-side { display: grid; gap: 14px; min-width: 0; }
+.hm-panel { border: 1px solid var(--gold-dim); border-radius: 4px; background: linear-gradient(180deg, #1c1917, #121110); padding: 12px 14px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.6); min-width: 0; }
+.hm-panel h2 { display: flex; justify-content: space-between; align-items: center; font: 700 17px var(--font-head); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
+.hm-panel h2 .link { background: none; border: 0; padding: 0; color: var(--gold); font: 600 11px var(--font-ui); letter-spacing: .08em; cursor: pointer; }
+.hm-mission img { width: 100%; height: 86px; object-fit: cover; border: 1px solid var(--line); border-radius: 3px; display: block; }
+.hm-mission h3 { margin: 10px 0 4px; font-size: 20px; }
+.hm-mission p { font-size: 13px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.hm-mission .btn { margin-top: 10px; width: 100%; justify-content: center; }
+.hm-feed ul { list-style: none; margin: 0; padding: 0; }
+.hm-feed li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.hm-feed li:first-child { border-top: 0; }
+.hm-feed time { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.hm-cards { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+.hm-card { display: grid; gap: 4px; text-align: center; justify-items: center; border: 1px solid var(--gold-dim); border-radius: 4px; padding: 10px 12px 12px; background: linear-gradient(180deg, #1c1917, #121110); box-shadow: inset 0 0 0 1px rgba(0,0,0,.6); min-width: 0; }
+.hm-card h3 { font: 700 15px var(--font-head); letter-spacing: .1em; text-transform: uppercase; }
+.hm-card img { width: 100%; height: clamp(70px, 10vh, 120px); object-fit: cover; border-radius: 3px; border: 1px solid var(--line); }
+.hm-card b { font: 700 16px var(--font-head); }
+.hm-card small { color: var(--muted); font-size: 12px; min-height: 1.4em; }
+.hm-card .btn { width: 100%; justify-content: center; margin-top: 4px; }
+.home-rest { margin-top: 24px; }
+main:has(.home-grid) { max-width: none; }
+main:focus, main:focus-visible { outline: none; }
+@media (max-width: 1100px) { .home-grid { grid-template-columns: 1fr; } .hm-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 901px) {
+  .app { grid-template-columns: 270px minmax(0, 1fr); }
+  .brand { min-height: 116px; display: grid; align-content: center; padding: 14px 22px; background: radial-gradient(120% 140% at 20% 0, #3a1214, #0e0d0d 70%); border-bottom: 2px solid var(--gold-dim); }
+  .brand-mark { font-size: 44px; text-shadow: 0 0 18px rgba(143,37,41,.7); }
+  .brand-sub { letter-spacing: .4em; }
+  .sidebar { background: linear-gradient(180deg, #17120f, #0b0a09); border-right: 2px solid var(--gold-dim); }
+  .nav { gap: 6px; padding: 14px 12px; }
+  .nav button { text-transform: uppercase; letter-spacing: .1em; font-size: 13px; font-weight: 600; border: 1px solid #4a3d24; border-left-width: 3px; border-radius: 4px; padding: 10px 14px; gap: 14px; background: linear-gradient(180deg, #1e1a17, #121010); box-shadow: inset 0 0 0 1px rgba(0,0,0,.55); }
+  .nav button .ic { width: 22px; height: 22px; color: var(--gold); }
+  .nav button[aria-current="page"] { background: linear-gradient(90deg, #8a1f24, #3b1013); border-color: var(--gold); box-shadow: 0 0 16px rgba(143,37,41,.5), inset 0 0 0 1px rgba(0,0,0,.4); }
+  .nav button[aria-current="page"] .ic { color: #fff; }
+  .topbar { min-height: 116px; padding: 12px var(--gutter); gap: 20px; border-bottom: 2px solid var(--gold-dim);
+    background: linear-gradient(90deg, rgba(10,9,9,.94), rgba(10,9,9,.55) 45%, rgba(10,9,9,.9)), url(img/bg_hero_dashboard.webp) center 35% / cover; }
+  .tb-player { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .tb-player .ph, .tb-player svg, .tb-player img { border-radius: 50%; border: 2px solid var(--gold); }
+  .tb-id { display: grid; gap: 2px; min-width: 150px; }
+  .tb-id b { font: 700 24px var(--font-head); }
+  .tb-id small { color: var(--gold); letter-spacing: .14em; text-transform: uppercase; font-size: 11px; }
+  .tb-xp { position: relative; height: 16px; background: #0c0b0b; border: 1px solid var(--gold-dim); border-radius: 8px; overflow: hidden; margin-top: 4px; }
+  .tb-xp i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #8a1f24, var(--gold)); }
+  .tb-xp span { position: relative; display: block; text-align: center; font-size: 10px; line-height: 14px; letter-spacing: .06em; }
+  .tb-stats { display: flex; gap: 10px; flex-wrap: wrap; margin-left: 10px; }
+  .tb-pill { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; background: rgba(8,7,7,.78); border: 1px solid #4a3d24; font-size: 16px; }
+  .tb-pill .ic { color: var(--burg-hi); } .tb-pill.gold { color: var(--gold); } .tb-pill.gold .ic, .tb-pill.tok .ic { color: var(--gold); }
+  .topbar > .cash { display: none; }
+  button.tb-pill { color: inherit; cursor: pointer; font: inherit; font-size: 16px; } button.tb-pill:hover { border-color: var(--gold); } .tb-pill .plus { color: var(--gold); font-weight: 700; }
+  .music-ctl { left: auto !important; bottom: auto !important; top: 40px; right: 140px; z-index: 35; }
+  .topbar .district-chip { display: none; }
+}
+@media (min-width: 901px) and (max-height: 860px) {
+  .brand, .topbar { min-height: 92px; } .brand-mark { font-size: 36px; } .tb-id b { font-size: 21px; } .tb-pill { padding: 6px 14px; font-size: 15px; } .tb-player .ph, .tb-player img { width: 54px; height: 54px; }
+  .topbar { padding-top: 8px; padding-bottom: 8px; } .music-ctl { top: 30px; }
+  .nav { gap: 3px; padding: 8px 12px; } .nav button { padding: 4px 12px; font-size: 12px; gap: 12px; } .nav button .ic { width: 18px; height: 18px; }
+  .hm-mission img { display: none; } .hm-mission h3 { margin-top: 2px; font-size: 18px; } .hm-mission p { -webkit-line-clamp: 2; } .hm-panel { padding: 10px 12px; } .hm-feed li { padding: 5px 0; }
+  .home-grid { gap: 10px; } .hm-cards { gap: 10px; } .hm-card { padding: 8px 10px 10px; gap: 2px; } .hm-card img { height: 64px; } .home-rest { margin-top: 14px; }
+  main { padding-top: 14px; }
 }
 </style>
 <div class="app" id="app">
@@ -2614,6 +2727,12 @@ const ART = (function () {
     const recent = S.activity.slice(0, 6);
     $('#topbar').innerHTML =
       '<button class="icon-btn menu-btn" data-act="drawer-open" aria-label="Open navigation">' + icon('menu', 20) + crewDot() + '</button>' +
+      '<div class="tb-player">' + portrait(p.portrait, 64) + '<div class="tb-id"><b>' + esc(p.name) + '</b><small>' + esc(MOB.rankProgress(p.xp).cur.name) + '</small>' +
+        '<div class="tb-xp" title="Experience"><i style="width:' + MOB.rankProgress(p.xp).pct + '%"></i><span class="num">XP ' + MOB.rankProgress(p.xp).into + ' / ' + (MOB.rankProgress(p.xp).span || '—') + '</span></div></div></div>' +
+      '<div class="tb-stats"><div class="tb-pill gold">' + icon('dollar', 18) + '<b class="num">' + money(p.cashMinor) + '</b></div>' +
+        '<div class="tb-pill">' + icon('heart', 18) + '<b class="num">' + p.health + ' / ' + MOB.effective(S).maxHealth + '</b></div>' +
+        '<button class="tb-pill" data-act="open-supplies" title="Quick supplies: buy and use health, energy and heat items">' + icon('bolt', 18) + '<b class="num">' + p.energy + ' / ' + MOB.effective(S).maxEnergy + '</b><span aria-hidden="true" class="plus">+</span></button>' +
+        (typeof whUi !== 'undefined' && whUi.data && cloud.on ? '<div class="tb-pill tok" title="MOB tokens">' + icon('star', 18) + '<b class="num">' + whUi.data.tokens + '</b></div>' : '') + '</div>' +
       '<div class="district-chip" title="Current district">' + icon('pin', 16) + '<span>' + esc(d.name) + '</span></div>' +
       '<div class="spacer"></div>' +
       '<button class="cash meter-chip" data-act="open-supplies" aria-label="Energy ' + p.energy + ' of ' + MOB.CONFIG.maxEnergy + '. Open quick supplies" title="Quick supplies: buy and use health, energy and heat items">' + icon('bolt', 16) + '<span class="num">' + p.energy + '</span><span aria-hidden="true" style="margin-left:2px;font-weight:700">+</span></button>' +
@@ -2803,11 +2922,11 @@ const ART = (function () {
       '<li data-pg="item"><time>' + (a.kind === 'demo' ? 'Demo event' : ago(a.ts)) + '</time><span class="t ' + esc(a.kind) + '">' + esc(a.text) + '</span></li>').join('');
 
     const open = MOB.MISSIONS.filter((m) => { const s = MOB.missionStatus(S, m, Date.now()).state; return s === 'available' || s === 'active' || s === 'resolved'; }).slice(0, 3);
-    return hero + dailyCard() + (notesSeen() ? '' : playtestNotes(true)) + '<div style="margin-top:20px">' + activeJobBanner() + '</div>' +
+    return homeScreen() + '<div class="home-rest">' + dailyCard() + (notesSeen() ? '' : playtestNotes(true)) + '<div style="margin-top:20px">' + activeJobBanner() + '</div>' +
       '<div class="dash-top" style="margin-top:0">' + card + '<div><h2 class="sec-title sec-first">Where to next?</h2><div class="grid g2">' + quick + '</div></div></div>' +
       '<h2 class="sec-title">Open jobs <small>' + open.length + ' READY</small></h2>' + (open.length ? '<div class="grid g3">' + open.map(missionCard).join('') + '</div>' : '<div class="empty">' + icon('brief', 30) + '<h3>No jobs ready right now</h3><p>Check the Job Board for locked work and cooldowns.</p></div>') +
       '<h2 class="sec-title">Recent activity</h2><section class="paper" aria-label="Recent activity"><div class="paper-head"><h3>The Lakefront Ledger</h3><small><span>Late Edition</span><span>Chicago · 1931</span></small></div><ul class="feed">' + feed + '</ul>' +
-      '<p class="paper-note">The first three entries are starter demo events. Everything after them is your own record. No other players are involved.</p></section>';
+      '<p class="paper-note">The first three entries are starter demo events. Everything after them is your own record. No other players are involved.</p></section></div>';
   }
 
   function pageJobs() {
@@ -2942,7 +3061,7 @@ const ART = (function () {
         '<div class="m-foot"><span class="status ready">' + icon('check', 15) + 'Owned</span><span style="display:flex;gap:8px">' + (own.level < 5 ? '<button class="btn sm ghost" data-act="upgrade-biz" data-id="' + b.id + '" title="Needs ' + esc(MOB.rankName(MOB.BUSINESS_LEVEL_RANK[own.level])) + '">Upgrade · ' + money(MOB.upgradeCostMinor(b, own.level)) + '</button>' : '') + '<button class="btn sm" data-act="collect" data-id="' + b.id + '">Collect</button></span></div>';
     } else if (st.state === 'locked') foot = '<div class="m-foot"><span class="status">' + icon('lock', 15) + esc(st.reason) + '</span><button class="btn sm ghost" data-act="buy-biz" data-id="' + b.id + '">Buy · ' + money(b.priceMinor) + '</button></div>';
     else foot = '<div class="m-foot"><span class="status ready">' + icon('check', 15) + 'For sale</span><button class="btn sm" data-act="buy-biz" data-id="' + b.id + '">Buy · ' + money(b.priceMinor) + '</button></div>';
-    return '<article class="card mission ' + (st.state === 'locked' ? 'is-locked' : '') + '"><div class="biz-art' + (ART.businessHasPhoto(b.id) ? '' : ' temp-art') + '">' + ART.businessArt(b.id) + '<span class="chip ribbon" style="position:absolute;top:10px;left:10px">' + (st.state === 'owned' ? 'Owned' : 'Fictional business') + '</span></div>' +
+    return '<article data-pg="item" class="card mission ' + (st.state === 'locked' ? 'is-locked' : '') + '"><div class="biz-art' + (ART.businessHasPhoto(b.id) ? '' : ' temp-art') + '">' + ART.businessArt(b.id) + '<span class="chip ribbon" style="position:absolute;top:10px;left:10px">' + (st.state === 'owned' ? 'Owned' : 'Fictional business') + '</span></div>' +
       '<div class="m-body"><h3>' + esc(b.name) + '</h3><p class="sum">' + esc(b.description) + '</p>' + perDay + foot + '</div></article>';
   }
 
@@ -2987,6 +3106,7 @@ const ART = (function () {
   /* ---------- phone: one screen per page ----------
      On a phone each page fits the screen. Composite pages use sub-tabs; long lists are cut into pages by measurement
      (applyPaging) so a page holds exactly as many cards as fit. Desktop is untouched. */
+  /* compact one-screen layout at every size (no scrolling); ?classic keeps the old wide layout for regression tests */
   const PHONE_MQ = window.matchMedia('(max-width: 700px)');
   const isPhone = () => PHONE_MQ.matches;
   const pgWrap = (h) => (h ? '<div data-pg="item">' + h + '</div>' : '');
@@ -4503,6 +4623,50 @@ const ART = (function () {
     else if (a === 'st-claim') stClaim();
     else if (a === 'ed-go') edClaim(t.dataset.id).then(() => { if (typeof cloudRefresh === 'function') cloudRefresh(true); });
   });
+  /* ---------- desktop Home screen: night-city map, current mission, recent activity, five shortcut cards ---------- */
+  const HOME_PLATES = [   // [district id, left%, top%, width%, height%] over the baked-in label plates of the TEMP ART map
+    ['near-north', 38.6, 5.4, 18.4, 11.6], ['the-loop', 16, 28.2, 17.4, 14.2], ['west-side', 72, 33.2, 13.8, 14],
+    ['south-side', 11.4, 59.6, 16, 11.4], ['riverfront', 75, 70.5, 18.5, 15] ];
+  function homeMap() {
+    const p = S.player, ri = MOB.playerRankIdx(S);
+    const plates = HOME_PLATES.map((h) => {
+      const d = MOB.DISTRICT_BY_ID[h[0]]; if (!d) return '';
+      const locked = ri < MOB.RANK_IDX[d.rankReq], here = p.district === d.id;
+      return '<button class="hm-plate' + (here ? ' here' : '') + (locked ? ' locked' : '') + '" style="left:' + h[1] + '%;top:' + h[2] + '%;width:' + h[3] + '%;height:' + h[4] + '%" data-act="visit" data-id="' + d.id + '"' + (here ? ' disabled' : '') +
+        ' aria-label="' + esc(d.name) + (here ? ', you are here' : locked ? ', locked' : '') + '"><b>' + esc(d.name) + '</b><small>' + (here ? 'You are here' : locked ? 'Opens at ' + esc(MOB.rankName(d.rankReq)) : 'Visit') + '</small></button>';
+    }).join('');
+    return '<section class="hm-map" aria-label="Map of Chicago"><img src="img/home_map.webp" alt="Chicago at night, seen from above, with the river and five districts" decoding="async">' + plates + '<span class="chip demo hm-temp">TEMP ART</span></section>';
+  }
+  function homeMission() {
+    const act = MOB.activeMissionId(S);
+    const m = (act && MOB.MISSION_BY_ID[act]) || MOB.MISSIONS.find((x) => { const s = MOB.missionStatus(S, x, Date.now()).state; return s === 'available' || s === 'resolved'; });
+    const st = m ? MOB.missionStatus(S, m, Date.now()).state : '';
+    return '<section class="hm-panel hm-mission"><h2>Current mission</h2><img src="img/home_mission.webp" alt="" decoding="async">' +
+      (m ? '<h3>' + esc(m.title) + '</h3><p>' + esc(m.summary) + '</p><button class="btn" data-act="nav" data-route="jobs">' + (st === 'resolved' ? 'Collect reward' : st === 'active' ? 'Continue' : 'Go to mission') + icon('arrow', 16) + '</button>'
+        : '<h3>No job ready</h3><p>Check the board for what opens next.</p><button class="btn" data-act="nav" data-route="jobs">Job board' + icon('arrow', 16) + '</button>') + '</section>';
+  }
+  function homeActivity() {
+    const rows = S.activity.slice(0, 5).map((a) => '<li><span>' + esc(a.text) + '</span><time>' + (a.kind === 'demo' ? 'Demo' : ago(a.ts)) + '</time></li>').join('');
+    return '<section class="hm-panel hm-feed"><h2>Recent activity <button class="link" data-act="pop-bell">View all</button></h2><ul>' + rows + '</ul></section>';
+  }
+  function homeCards() {
+    const owned = MOB.BUSINESSES.filter((b) => S.businesses[b.id]);
+    const net = owned.reduce((n, b) => n + Math.round((b.grossMinorPerDay - b.expenseMinorPerDay) * MOB.levelMult(S.businesses[b.id].level)), 0);
+    const crew = typeof crewUi !== 'undefined' && crewUi.data && crewUi.data.crew ? crewUi.data : null;
+    const used = MOB.slotsUsed(S.inventory), cap = MOB.CONFIG.inventorySlots;
+    const rk = MOB.rankProgress(S.player.xp).cur.name;
+    const c = [
+      ['businesses', 'home_biz', 'Your business', owned.length ? owned.length + ' owned' : 'None yet', owned.length ? 'Net ' + money(net) + ' / day' : 'Start with a restaurant', 'Manage'],
+      ['crew', 'home_crew', 'Your crew', crew ? esc(crew.crew.name) : 'No crew yet', crew && crew.members ? crew.members.length + ' member' + (crew.members.length === 1 ? '' : 's') : 'Found or join one', 'View crew'],
+      ['inventory', 'home_inv', 'Inventory', 'Items: ' + used + ' / ' + cap, 'Gear and supplies', 'Open'],
+      ['shop', 'home_market', 'The shop', 'Buy gear', 'Outfits, pistols, supplies', 'Visit'],
+      ['rankings', 'home_rank', 'Rankings', esc(rk), 'See where you stand', 'View rankings'],
+    ];
+    return '<div class="hm-cards">' + c.map((x) => '<article class="hm-card"><h3>' + x[2] + '</h3><img src="img/' + x[1] + '.webp" alt="" loading="lazy" decoding="async"><b>' + x[3] + '</b><small>' + x[4] + '</small><button class="btn sm" data-act="nav" data-route="' + x[0] + '">' + x[5] + '</button></article>').join('') + '</div>';
+  }
+  function homeScreen() {
+    return '<div class="home-grid"><h1 class="sr">MOB: The Underworld, Chicago 1931</h1>' + homeMap() + '<div class="hm-side">' + homeMission() + homeActivity() + '</div>' + homeCards() + '</div>';
+  }
 
   /* ---------- Quick Supplies: buy and use consumables from any page (tap the energy chip) ---------- */
   function suppliesModal() {
