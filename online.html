@@ -803,6 +803,21 @@ main:focus, main:focus-visible { outline: none; }
 @media (min-width: 901px) and (max-height: 780px) { .gear-wrap { height: calc(100dvh - 92px - 52px); } .gear-panel h2 { font-size: 24px; } .gear-item b { font-size: 14px; } .gear-detail .art { height: 90px; } }
 @media (max-width: 1300px) { .gear-shop-body { grid-template-columns: 1fr; } .gear-detail { display: none; } }
 @media (max-width: 1100px) { .gear-wrap { grid-template-columns: 1fr; } }
+@media (min-width: 901px) {
+  main:has(.law-wrap) { max-width: none; padding-bottom: 26px; }
+  .law-wrap { display: grid; grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); gap: 20px; height: calc(100dvh - 116px - 52px); grid-template-rows: minmax(0, 1fr); }
+  .law-wrap .gear-panel { align-content: start; overflow: auto; }
+  .law-left { grid-template-rows: auto 1fr; } .law-stack { display: grid; gap: 12px; align-content: start; }
+  .law-right { grid-template-rows: auto auto 1fr auto; }
+  .law-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; min-height: 0; }
+  .law-col { display: grid; gap: 8px; align-content: start; }
+  .law-h { font: 600 13px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--gold); }
+  .law-wrap .card { background: rgba(8,7,7,.55); border: 1px solid var(--gold-dim); border-radius: 4px; }
+  .law-how { color: var(--muted); font-size: 13.5px; } .law-how summary { cursor: pointer; color: var(--gold); }
+  .law-how-body { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 8px; }
+}
+@media (min-width: 901px) and (max-height: 780px) { .law-wrap { height: calc(100dvh - 92px - 52px); } }
+
 </style>
 <div class="app" id="app">
   <aside class="sidebar" id="sidebar" aria-label="Main navigation"></aside>
@@ -5000,7 +5015,7 @@ const ART = (function () {
       '<li>Back one man per district with a donation: ' + tiers.map((t) => money(t[0]) + ' = ' + t[1] + ' vote' + (t[1] > 1 ? 's' : '')).join(', ') + '. Up to ' + e.max_donations + ' donations a week per district, and you cannot play both sides.</li>' +
       '<li>The winner\'s platform governs the district for the <b>following</b> week. A tie, or nobody voting, goes to the machine\'s pick.</li>' +
       '<li>If the man you backed wins, collect his thanks: +' + e.thanks_standing + ' standing with the alderman.</li></ul></section>';
-    const cards = e.districts.map((d) => {
+    const elCard = (d) => {
       const asked = lawUi.ask && lawUi.ask.elect === d.district_id ? lawUi.ask : null;
       const mine = d.mine, full = mine && mine.donations >= e.max_donations;
       const cand = d.candidates.map((c) => {
@@ -5016,8 +5031,9 @@ const ART = (function () {
       const thanks = d.thanks.map((x) => lawBtn('law-thanks', d.district_id, 'Collect ' + esc(x.candidate) + '\'s thanks', 'sm', ' data-week="' + x.week + '"')).join(' ');
       return '<article data-pg="item" class="card" style="padding:14px;display:grid;gap:8px"><h3 style="font-size:17px">' + esc(d.district) + '</h3>' +
         '<div style="font-size:13px;color:var(--muted)">Governing now: ' + (t ? '<b style="color:var(--text)">' + esc(t.candidate) + '</b>, ' + esc(t.platform) + ': ' + effTxt(t.stop_pct, t.heat_pct, t.gift_pct) : 'nobody') + '</div>' + cand + (thanks ? '<div style="display:flex;gap:8px;flex-wrap:wrap">' + thanks + '</div>' : '') + '</article>';
-    }).join('');
-    return explain + cards;
+    };
+    electionView.card = elCard; electionView.explain = explain;
+    return explain + e.districts.map(elCard).join('');
   }
   function wardView(w) {
     const gifts = w.gifts;
@@ -5026,7 +5042,7 @@ const ART = (function () {
       '<li>Every district has an alderman. Slip him an envelope and your <b>standing</b> with him rises (up to 100). It fades by ' + w.decay_per_day + ' a day.</li>' +
       tiers.map((t) => '<li>Standing <b>' + t[0] + '+</b>: ' + t[1] + '% less heat from jobs there' + (t[2] < 100 ? ', and patrols there stop you ' + (100 - t[2]) + '% less' : '') + '.</li>').join('') +
       '<li>At 50+ the police also take 20% less to look away. A crew that rules a district gets half as many patrols there.</li><li>You can give up to ' + w.daily_gifts + ' envelopes per ward per day.</li></ul></section>';
-    const cards = w.wards.map((x) => {
+    const wardCard = (x) => {
       const asked = lawUi.ask && lawUi.ask.ward === x.district_id ? lawUi.ask.tier : null;
       const bar = '<div role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + x.standing + '" style="height:12px;background:var(--bg);border:1px solid var(--line);border-radius:3px;overflow:hidden"><div style="height:100%;width:' + x.standing + '%;background:var(--gold)"></div></div>';
       const left = w.daily_gifts - x.gifts_today;
@@ -5036,8 +5052,25 @@ const ART = (function () {
       return '<article data-pg="item" class="card" style="padding:14px;display:grid;gap:7px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><h3 style="font-size:17px">' + esc(x.ward) + '</h3>' + (x.ruling ? '<span class="chip gold">Your crew rules here</span>' : '') + '</div>' +
         '<div style="font-size:14px"><b>' + esc(x.alderman) + '</b></div><div style="color:var(--muted);font-size:13px">' + esc(x.blurb) + '</div>' + bar +
         '<div style="font-size:13px">Standing <b class="num">' + x.standing + '</b>' + (x.heat_cut_pct ? ' · ' + x.heat_cut_pct + '% less job heat' : '') + (x.stop_pct < 100 ? ' · ' + (100 - x.stop_pct) + '% fewer patrols' : '') + '</div>' + btns + '</article>';
-    }).join('');
-    return explain + cards;
+    };
+    wardView.card = wardCard; wardView.explain = explain;
+    return explain + w.wards.map(wardCard).join('');
+  }
+
+  function lawDesktop(h) {
+    const pol = lawUi.pol, w = lawUi.ward, e = lawUi.el;
+    const ids = w ? w.wards.map((x) => ({ id: x.district_id, name: x.ward })) : [];
+    if (!lawUi.dist && ids.length) lawUi.dist = ids[0].id;
+    let right = '<p style="color:var(--muted)">Loading…</p>';
+    if (w && e) {
+      wardView(w); electionView(e);
+      const x = w.wards.find((q) => q.district_id === lawUi.dist) || w.wards[0], d = e.districts.find((q) => q.district_id === x.district_id);
+      const chips = '<div class="gear-tabs">' + w.wards.map((q) => { const dd = e.districts.find((r) => r.district_id === q.district_id); return '<button class="ch-tab" aria-pressed="' + (q.district_id === x.district_id) + '" data-act="law-dist" data-id="' + q.district_id + '"><b>' + esc(dd ? dd.district : q.ward) + '</b><small>Standing ' + q.standing + '</small></button>'; }).join('') + '</div>';
+      right = chips + '<div class="law-two"><div class="law-col"><h3 class="law-h">Alderman &amp; ward</h3>' + wardView.card(x) + '</div><div class="law-col"><h3 class="law-h">This week\'s election</h3>' + (d ? electionView.card(d) : '') + '</div></div>' +
+        '<details class="law-how"><summary>How wards and elections work</summary><div class="law-how-body">' + wardView.explain + electionView.explain + '</div></details>';
+    }
+    return '<h1 class="sr">The Law</h1><div class="law-wrap"><section class="gear-panel law-left"><header><div><h2>The Law</h2><p>Your heat, the precinct, the desk.</p></div></header><div class="law-stack">' + precinctView(pol) + '</div></section>' +
+      '<section class="gear-panel law-right"><header><div><h2>Wards &amp; Elections</h2><p>Aldermen make patrols and heat cheaper. Pick a district.</p></div></header>' + right + '</section></div>';
   }
 
   function pageLaw() {
@@ -5049,10 +5082,12 @@ const ART = (function () {
     if (lawUi.loadedFor !== lawEmail() && !lawUi.loading) setTimeout(() => loadPolice(), 0);
     else if (Date.now() - lawUi.at > 6000 && !lawUi.loading && !cloud.busy) setTimeout(() => loadPolice(true), 0);
     const sub = isPhone() ? curSub('law', 'precinct') : 'both';
+    const dsk = !isPhone();
     if ((sub === 'elections' || sub === 'both') && (!lawUi.el || Date.now() - lawUi.elAt > 8000) && !cloud.busy) setTimeout(() => loadElection(true), 0);
     if ((sub === 'wards' || sub === 'both') && (!lawUi.ward || Date.now() - lawUi.wardAt > 8000) && !cloud.busy) setTimeout(() => loadWards(true), 0);
     if (lawUi.err) return h + '<section class="card" style="padding:18px"><p>' + esc(lawUi.err) + '</p><button class="btn sm" data-act="law-reload">Try again</button></section>';
-    if (!lawUi.pol) return h + '<p style="color:var(--muted)">Loading…</p>';
+    if (!lawUi.pol) return (dsk ? '' : h) + '<p style="color:var(--muted)">Loading…</p>';
+    if (dsk && lawUi.pol) return lawDesktop(h);
     if (sub === 'both') return h + '<div class="grid g2" style="align-items:start"><div style="display:grid;gap:12px">' + precinctView(lawUi.pol) + '</div><div style="display:grid;gap:12px">' + (lawUi.ward ? wardView(lawUi.ward) : '<p style="color:var(--muted)">Loading…</p>') + '</div></div>' + '<h2 style="font-size:20px;margin:18px 0 8px">Elections</h2><div class="grid g2" style="align-items:start">' + (lawUi.el ? electionView(lawUi.el) : '<p style="color:var(--muted)">Loading…</p>') + '</div>';
     const tabs = subTabs('law', [['precinct', 'Precinct'], ['wards', 'Wards'], ['elections', 'Elections']]);
     if (sub === 'elections') return h + tabs + (lawUi.el ? electionView(lawUi.el) : '<p style="color:var(--muted)">Loading…</p>');
@@ -5062,7 +5097,8 @@ const ART = (function () {
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-act^="law-"]'); if (!t || !cloud.on) return;
     const a = t.dataset.act, id = t.dataset.id;
-    if (a === 'law-reload') { lawUi.err = ''; loadPolice(); }
+    if (a === 'law-dist') { lawUi.dist = id; lawUi.ask = null; render(); }
+    else if (a === 'law-reload') { lawUi.err = ''; loadPolice(); }
     else if (a === 'law-cancel') { lawUi.ask = null; render(); }
     else if (a === 'law-desk') { lawUi.ask = 'desk'; render(); }
     else if (a === 'law-ret') { lawUi.ask = 'retainer'; render(); }
