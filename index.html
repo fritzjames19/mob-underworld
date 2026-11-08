@@ -730,6 +730,42 @@ main:focus, main:focus-visible { outline: none; }
   .home-grid { gap: 10px; } .hm-cards { gap: 10px; } .hm-card { padding: 8px 10px 10px; gap: 2px; } .hm-card img { height: 64px; } .home-rest { margin-top: 14px; }
   main { padding-top: 14px; }
 }
+
+/* ---------- desktop Job Board: chapter tabs + list + preview pane ---------- */
+.jobs-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+.ch-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.ch-tab { display: grid; gap: 0; text-align: center; padding: 6px 16px; border: 1px solid #4a3d24; border-radius: 4px; background: linear-gradient(180deg, #1e1a17, #121010); color: var(--muted); cursor: pointer; }
+.ch-tab b { font: 600 13px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; } .ch-tab small { font-size: 11px; }
+.ch-tab[aria-pressed="true"] { background: linear-gradient(90deg, #8a1f24, #3b1013); border-color: var(--gold); color: var(--text); }
+.jobs-sub { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.ch-name { font: 700 20px var(--font-head); color: var(--gold); }
+.jobs-split { display: grid; grid-template-columns: minmax(0, 1fr) clamp(380px, 38vw, 580px); gap: 16px; align-items: start; }
+.job-list { display: grid; gap: 8px; }
+.job-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 14px; border: 1px solid var(--line); border-radius: 4px; background: linear-gradient(180deg, #1c1917, #121110); }
+.job-row.sel { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-dim); }
+.job-row.is-locked { opacity: .72; }
+.job-row .glyph { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--gold-dim); border-radius: 50%; color: var(--gold); }
+.job-row h3 { font-size: 18px; }
+.jr-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.jr-status { font-size: 12.5px; margin-top: 2px; }
+.job-pane { position: sticky; top: 130px; min-width: 0; }
+.job-pane-hint { display: grid; justify-items: center; gap: 8px; text-align: center; padding: 40px 24px; border: 1px dashed var(--gold-dim); border-radius: 4px; color: var(--muted); }
+.job-pane .modal.docked { width: 100%; max-width: none; max-height: calc(100dvh - 150px); overflow: auto; box-shadow: none; margin: 0; animation: none; }
+.job-pane .modal-cols { grid-template-columns: 1fr; gap: 12px; }
+.job-pane .modal-head { padding: 10px 16px; } .job-pane .modal-head h2 { font-size: 24px; } .job-pane .modal-body { padding: 10px 16px 14px; display: grid; gap: 10px; }
+.job-pane .brief { font-size: 15px; line-height: 1.45; margin: 0; }
+.job-pane .facts { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.job-pane .facts > div { padding: 6px 10px; } .job-pane .facts > div:nth-child(n+5) { display: none; } .job-pane .facts b { font-size: 16px; }
+.job-pane .contact { padding: 6px 10px; gap: 10px; } .job-pane .contact img, .job-pane .contact .ph { width: 36px; height: 36px; }
+.job-pane .notice { padding: 8px 12px; font-size: 13.5px; margin: 0; }
+.job-pane .approach { padding: 9px 12px; gap: 4px; } .job-pane .approach b { font-size: 17px; } .job-pane .approach .d { font-size: 13px; } .job-pane .approach .odds strong { font-size: 20px; }
+.job-pane .modal-cols > div { display: grid; gap: 8px; align-content: start; } .job-pane .row-end { margin-top: 2px; }
+.job-pane .modal.docked { max-height: calc(100dvh - 330px); }
+.job-pane .contact { display: none; } .job-pane .modal-body { gap: 7px; } .job-pane .approach { padding: 6px 12px; gap: 2px; } .job-pane .approach .tags, .job-pane .approach .chips { margin-top: 2px; } .job-pane .facts > div { padding: 3px 10px; } .job-pane .eyebrow { margin-bottom: 0; }
+@media (min-width: 901px) and (max-height: 860px) { .job-pane .modal.docked { max-height: calc(100dvh - 262px); } .job-pane .notice { display: none; } .job-pane .brief { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 14px; } .job-pane .approach { padding: 4px 10px; } .job-pane .approach .d { font-size: 12px; } .job-pane .modal-head { padding: 6px 14px; } .job-pane .modal-head h2 { font-size: 20px; } .jobs-top .eyebrow { display: none; } .jobs-top .page-title { font-size: 28px; } .ch-tab { padding: 4px 14px; } .ch-name { font-size: 17px; } main:has(.jobs-split) { padding-top: 10px; } .job-pane .contact { display: none; } .job-row { padding: 6px 12px; } .job-row .glyph { width: 34px; height: 34px; } .job-row h3 { font-size: 16px; } .jr-status { display: none; } .job-row.is-locked .jr-status { display: block; } .jobs-top { margin-bottom: 4px; } .jobs-sub { margin-bottom: 6px; } .job-list { gap: 6px; } }
+.enc-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (min-width: 901px) { .nav button[data-route="city"] { display: none; } }
+@media (max-width: 1100px) { .jobs-split { grid-template-columns: 1fr; } .job-pane { position: static; } }
 </style>
 <div class="app" id="app">
   <aside class="sidebar" id="sidebar" aria-label="Main navigation"></aside>
@@ -2919,6 +2955,7 @@ const ART = (function () {
   }
 
   function pageJobs() {
+    if (!isPhone()) return jobsDesktop();
     const now = Date.now();
     const bucket = (m) => { const s = MOB.missionStatus(S, m, now).state; return s === 'available' || s === 'active' || s === 'resolved' ? 'ready' : s === 'claimed' ? 'done' : s; };
     const list = MOB.MISSIONS.filter((m) => ui.jobFilter === 'all' || ui.jobFilter === bucket(m));
@@ -3360,6 +3397,14 @@ const ART = (function () {
     if (!ui.modal) { root.innerHTML = ''; lastModalKey = null; return; }
     const html = ui.modal.type === 'mission' ? missionModal() : ui.modal.type === 'item' ? itemModal() : ui.modal.type === 'profile' ? profileModal() : ui.modal.type === 'player' ? playerModal() : ui.modal.type === 'police' ? policeModal() : ui.modal.type === 'supplies' ? suppliesModal() : ui.modal.type === 'daily' ? dailyModal() : ui.modal.type === 'guides' ? guidesModal() : ui.modal.type === 'me' ? meModal() : ui.modal.type === 'titlerec' ? titleRecModal() : ui.modal.type === 'fight' ? fightModal() : resetModal();
     const key = modalKey();
+    const pane = !isPhone() && ui.route === 'jobs' && ui.modal.type === 'mission' ? $('#job-pane') : null;   /* desktop: the mission opens in the preview pane, not a pop-up */
+    if (pane) {
+      const prev = pane.querySelector('.modal'), ps = prev ? prev.scrollTop : 0, tmp = document.createElement('div');
+      root.innerHTML = ''; tmp.innerHTML = html;
+      const dm = tmp.querySelector('.modal'); dm.classList.add('docked'); dm.removeAttribute('aria-modal'); pane.replaceChildren(dm);
+      if (key === lastModalKey) dm.scrollTop = ps;
+      lastModalKey = key; return;
+    }
     const prevScroll = root.querySelector('.modal') ? root.querySelector('.modal').scrollTop : 0;
     root.innerHTML = html;
     const mod = root.querySelector('.modal');
@@ -3469,6 +3514,8 @@ const ART = (function () {
       case 'inv-owned': ui.invOwned = !ui.invOwned; render(); break;
       case 'shop-filter': ui.shopFilter = t.dataset.f; render(); break;
       case 'sort': ui.sort = t.dataset.k; render(); break;
+      case 'job-chapter': ui.jobCh = isNaN(Number(t.dataset.ch)) ? t.dataset.ch : Number(t.dataset.ch); ui.modal = ui.resolving ? ui.modal : null; render(); break;
+      case 'home-mission': { const mm = MOB.MISSION_BY_ID[id]; go('jobs'); if (mm) { ui.jobCh = mm.chapter || 'street'; ui.modal = { type: 'mission', id, phase: '', claimed: null }; render(); } break; }
       case 'open-mission': ui.modal = { type: 'mission', id, phase: '', claimed: null }; render(); break;
       case 'start': doResult(await ACT('startMission', { missionId: id })); break;
       case 'choose': chooseApproach(t.dataset.choice); break;
@@ -4634,7 +4681,7 @@ const ART = (function () {
     const m = (act && MOB.MISSION_BY_ID[act]) || MOB.MISSIONS.find((x) => { const s = MOB.missionStatus(S, x, Date.now()).state; return s === 'available' || s === 'resolved'; });
     const st = m ? MOB.missionStatus(S, m, Date.now()).state : '';
     return '<section class="hm-panel hm-mission"><h2>Current mission</h2><img src="img/home_mission.webp" alt="" decoding="async">' +
-      (m ? '<h3>' + esc(m.title) + '</h3><p>' + esc(m.summary) + '</p><button class="btn" data-act="nav" data-route="jobs">' + (st === 'resolved' ? 'Collect reward' : st === 'active' ? 'Continue' : 'Go to mission') + icon('arrow', 16) + '</button>'
+      (m ? '<h3>' + esc(m.title) + '</h3><p>' + esc(m.summary) + '</p><button class="btn" data-act="home-mission" data-id="' + m.id + '">' + (st === 'resolved' ? 'Collect reward' : st === 'active' ? 'Continue' : 'Go to mission') + icon('arrow', 16) + '</button>'
         : '<h3>No job ready</h3><p>Check the board for what opens next.</p><button class="btn" data-act="nav" data-route="jobs">Job board' + icon('arrow', 16) + '</button>') + '</section>';
   }
   function homeActivity() {
@@ -4669,6 +4716,60 @@ const ART = (function () {
   const guidesModal = () => homeModal('Help', 'Guides', playtestNotes(false).replace('margin-top:20px', 'margin-top:0'));
   const meModal = () => homeModal('Your file', esc(S.player.name), playerCardHtml());
   const dailyReady = () => { try { return MOB.dailyStatus(S, Date.now()).available; } catch (e) { return false; } };
+  /* ---------- desktop Job Board: chapter tabs, compact list on the left, mission preview pane on the right ---------- */
+  function jobStatusHtml(m) {
+    const st = MOB.missionStatus(S, m, Date.now());
+    if (st.state === 'locked') return '<span class="status">' + icon('lock', 14) + esc(st.reason) + '</span>';
+    if (st.state === 'cooldown') return '<span class="status cool">' + icon('clock', 14) + 'Lying low <b class="num" data-cd-until="' + S.missions[m.id].cooldownUntil + '">' + MOB.fmtClock(st.remainingMs) + '</b></span>';
+    if (st.state === 'claimed') return '<span class="status ready">' + icon('check', 14) + 'Completed</span>';
+    if (st.state === 'resolved') return '<span class="status ready">' + icon('award', 14) + 'Reward waiting</span>';
+    if (st.state === 'active') return '<span class="status cool">' + icon('clock', 14) + 'In progress</span>';
+    return '<span class="status ready">' + icon('check', 14) + 'Ready</span>';
+  }
+  function jobRow(m) {
+    const st = MOB.missionStatus(S, m, Date.now()).state, sel = ui.modal && ui.modal.type === 'mission' && ui.modal.id === m.id;
+    return '<article class="job-row' + (sel ? ' sel' : '') + (st === 'locked' ? ' is-locked' : '') + '"><div class="glyph">' + icon(m.glyph, 22) + '</div><div class="jr-main"><h3>' + esc(m.title) + '</h3>' +
+      '<div class="jr-meta"><span class="gold">' + dollars(m.cash[0]) + '–' + dollars(m.cash[1]) + '</span><span>' + m.xp + ' XP</span><span>' + m.energy + ' energy</span><span class="chip ' + diffClass(m.difficulty) + '">' + m.difficulty + '</span></div>' +
+      '<div class="jr-status">' + jobStatusHtml(m) + '</div></div><button class="btn sm' + (st === 'locked' || st === 'claimed' ? ' ghost' : '') + '" data-act="open-mission" data-id="' + m.id + '">' + (st === 'resolved' ? 'Claim' : st === 'active' ? 'Continue' : sel ? 'Viewing' : 'View') + '</button></article>';
+  }
+  function fightRow(en) {
+    const st = MOB.encounterStatus(S, en), locked = st.state === 'locked';
+    return '<article class="job-row' + (locked ? ' is-locked' : '') + '"><div class="glyph">' + icon(en.glyph, 22) + '</div><div class="jr-main"><h3>' + esc(en.title) + '</h3>' +
+      '<div class="jr-meta"><span class="gold">' + dollars(en.cash[0]) + '–' + dollars(en.cash[1]) + '</span><span>' + en.xp + ' XP</span><span>' + en.energy + ' energy</span><span class="chip">' + esc(en.enemy.name) + '</span></div>' +
+      '<div class="jr-status">' + (locked ? '<span class="status">' + icon('lock', 14) + esc(st.reason) + '</span>' : '<span class="status ready">' + icon('check', 14) + 'Ready</span>') + '</div></div>' +
+      '<button class="btn sm' + (locked ? ' ghost' : '') + '" data-act="fight-start" data-id="' + en.id + '">Pick the Fight</button></article>';
+  }
+  function jobsBucket(m) { const s = MOB.missionStatus(S, m, Date.now()).state; return s === 'available' || s === 'active' || s === 'resolved' ? 'ready' : s === 'claimed' ? 'done' : s; }
+  function jobsDesktop() {
+    const chapters = [...new Set(MOB.MISSIONS.filter((m) => m.chapter).map((m) => m.chapter))].sort((a, b) => a - b);
+    if (ui.jobCh == null) {
+      const open = MOB.MISSIONS.find((m) => m.chapter && ['available', 'active', 'resolved'].includes(MOB.missionStatus(S, m, Date.now()).state));
+      ui.jobCh = open ? open.chapter : chapters[0];
+    }
+    const names = { 1: 'Arriving in Chicago', 2: 'Trouble on the River', 3: 'Pressure from Every Side', 4: 'What Loyalty Costs', 5: 'The Succession' };
+    const tabs = chapters.map((c) => {
+      const all = MOB.MISSIONS.filter((m) => m.chapter === c), done = all.filter((m) => MOB.missionStatus(S, m, Date.now()).state === 'claimed').length;
+      return '<button class="ch-tab" data-act="job-chapter" data-ch="' + c + '" aria-pressed="' + (ui.jobCh === c) + '" title="' + esc(names[c] || '') + '"><b>Chapter ' + c + '</b><small>' + done + ' / ' + all.length + '</small></button>';
+    }).join('') + '<button class="ch-tab" data-act="job-chapter" data-ch="street" aria-pressed="' + (ui.jobCh === 'street') + '"><b>Street work</b><small>Repeatable</small></button>' +
+      '<button class="ch-tab" data-act="job-chapter" data-ch="fights" aria-pressed="' + (ui.jobCh === 'fights') + '"><b>Street fights</b><small>Combat</small></button>';
+    const f = [['all', 'All'], ['ready', 'Ready'], ['cooldown', 'Lying low'], ['locked', 'Locked'], ['done', 'Done']];
+    const filters = f.map((x) => '<button class="filter" data-act="job-filter" data-f="' + x[0] + '" aria-pressed="' + (ui.jobFilter === x[0]) + '">' + x[1] + '</button>').join('');
+    const pass = (m) => ui.jobFilter === 'all' || ui.jobFilter === jobsBucket(m);
+    let list;
+    if (ui.jobCh === 'fights') {
+      list = '<div class="job-list">' + MOB.ENCOUNTERS.map(fightRow).join('') + '</div>';
+    } else if (ui.jobCh === 'street') {
+      const jobs = MOB.MISSIONS.filter((m) => !m.chapter && pass(m));
+      list = jobs.length ? '<div class="job-list">' + jobs.map(jobRow).join('') + '</div>' : '<div class="empty">' + icon('brief', 30) + '<h3>Nothing here</h3><p>No street jobs match the filter.</p><button class="btn ghost sm" data-act="job-filter" data-f="all">Show all</button></div>';
+    } else {
+      const jobs = MOB.MISSIONS.filter((m) => m.chapter === ui.jobCh && pass(m));
+      list = jobs.length ? '<div class="job-list">' + jobs.map(jobRow).join('') + '</div>' : '<div class="empty">' + icon('brief', 30) + '<h3>Nothing here</h3><p>No jobs in this chapter match the filter.</p><button class="btn ghost sm" data-act="job-filter" data-f="all">Show all</button></div>';
+    }
+    return '<div class="jobs-top"><div><div class="eyebrow">Chicago, 1931</div><h1 class="page-title">Job Board</h1></div><div class="ch-tabs" role="group" aria-label="Chapters">' + tabs + '</div></div>' +
+      '<div class="jobs-sub"><span class="ch-name">' + (ui.jobCh === 'street' ? 'Street work · repeatable jobs' : ui.jobCh === 'fights' ? 'Street fights · pick one and swing' : 'Chapter ' + ui.jobCh + ' · ' + esc(names[ui.jobCh] || '')) + '</span><div class="filters" role="group" aria-label="Filter jobs">' + filters + '</div></div>' +
+      combatBanner() +
+      '<div class="jobs-split"><div class="jobs-left">' + list + '</div><aside id="job-pane" class="job-pane" aria-label="Mission preview"><div class="job-pane-hint">' + icon('brief', 34) + '<h3>Pick a job</h3><p>Select View on a job to read the briefing and choose how to play it.</p></div></aside></div>';
+  }
 
   /* ---------- Quick Supplies: buy and use consumables from any page (tap the energy chip) ---------- */
   function suppliesModal() {
