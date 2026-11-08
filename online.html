@@ -767,6 +767,39 @@ main:focus, main:focus-visible { outline: none; }
 .enc-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (min-width: 901px) { .nav button[data-route="city"] { display: none; } }
 @media (max-width: 1100px) { .jobs-split { grid-template-columns: 1fr; } .job-pane { position: static; } }
+
+/* ---------- desktop Inventory & Shop ---------- */
+.gear-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 16px; align-items: start; }
+.gear-panel { border: 1px solid var(--gold-dim); border-radius: 4px; background: linear-gradient(180deg, #1c1917, #121110); box-shadow: inset 0 0 0 1px rgba(0,0,0,.6); padding: 16px 18px; min-width: 0; display: grid; gap: 12px; }
+.gear-panel header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.gear-panel h2 { font: 700 26px var(--font-head); letter-spacing: .06em; text-transform: uppercase; }
+.gear-panel header p { color: var(--muted); font-size: 14px; }
+.gear-cash { display: inline-flex; align-items: center; gap: 8px; color: var(--gold); font-size: 20px; padding: 6px 14px; border: 1px solid #4a3d24; border-radius: 999px; background: rgba(8,7,7,.6); }
+.gear-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.gear-grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.gear-grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.gear-item { display: grid; gap: 4px; justify-items: center; text-align: center; padding: 10px 8px; border: 1px solid var(--line); border-radius: 4px; background: rgba(8,7,7,.55); color: inherit; cursor: pointer; font: inherit; min-width: 0; }
+.gear-item:hover, .gear-item.sel { border-color: var(--gold); }
+.gear-item.equipped { box-shadow: inset 0 0 0 1px var(--gold-dim); }
+.gear-item .art { width: 100%; height: clamp(64px, 9vh, 96px); display: grid; place-items: center; }
+.gear-item .art, .gear-detail .art { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; position: relative; } .gear-item .art.temp-art::after, .gear-detail .art.temp-art::after { position: static; font-size: 8px; padding: 0 4px; }
+.gear-item .art svg, .gear-item .art img { max-height: 100%; width: auto; max-width: 100%; }
+.gear-item b { font: 600 14px var(--font-ui); line-height: 1.2; } .gear-item small { color: var(--gold); font-size: 12px; letter-spacing: .06em; }
+.shopcard { padding: 8px; gap: 6px; } .shopcard .gi-main { display: grid; gap: 4px; justify-items: center; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; width: 100%; } .shopcard .btn { width: 100%; justify-content: center; }
+.shopcard .price, .gd-buy .price { color: var(--gold); font: 700 16px var(--font-head); }
+.gear-panel footer { display: flex; align-items: center; gap: 10px; color: var(--muted); } .gear-panel footer b { color: var(--text); }
+.gear-bon { margin-left: auto; color: var(--gold); }
+.gear-pager { display: flex; align-items: center; justify-content: center; gap: 12px; margin-left: auto; font-size: 13px; color: var(--muted); }
+.gear-shop-body { display: grid; grid-template-columns: minmax(0, 1fr) clamp(240px, 22vw, 330px); gap: 14px; align-items: start; }
+.gear-shop-body > div > .gear-pager { margin-top: 10px; }
+.gear-detail { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--gold-dim); border-radius: 4px; background: rgba(8,7,7,.55); text-align: center; justify-items: center; }
+.gear-detail .art { height: clamp(100px, 16vh, 150px); } .gear-detail h3 { font-size: 22px; } .gear-detail p { color: var(--muted); font-size: 14px; }
+.gd-buy { display: grid; gap: 8px; width: 100%; } .gd-buy .btn { width: 100%; justify-content: center; } .gear-lock { color: var(--bad, #d46a6a); }
+.modal.wide { max-width: 1100px; width: 100%; }
+@media (min-width: 901px) { .nav button[data-route="edition"], .nav button[data-route="shop"] { display: none; } }
+@media (min-width: 901px) and (max-height: 860px) { .gear-item .art { height: 62px; } .gear-panel { padding: 10px 14px; gap: 8px; } .gear-panel h2 { font-size: 22px; } .gear-item { padding: 6px; gap: 2px; } .gear-item b { font-size: 13px; } .gear-detail .art { height: 80px; } .gear-detail p { font-size: 13px; } }
+@media (max-width: 1300px) { .gear-shop-body { grid-template-columns: 1fr; } .gear-detail { display: none; } }
+@media (max-width: 1100px) { .gear-wrap { grid-template-columns: 1fr; } }
 </style>
 <div class="app" id="app">
   <aside class="sidebar" id="sidebar" aria-label="Main navigation"></aside>
@@ -2744,7 +2777,7 @@ const ART = (function () {
     $('#sidebar').innerHTML =
       '<div class="brand"><div class="brand-mark">M<span>O</span>B</div><div class="brand-sub">The Underworld</div></div>' +
       '<nav class="nav" aria-label="Pages">' +
-      ROUTES.filter((r) => !r.hidden && (!r.gate || (cloud.on && (r.gate !== 'underground' || ugRankOk())))).map((r) => '<button data-act="nav" data-route="' + r.id + '"' + (ui.route === r.id ? ' aria-current="page"' : '') + '>' + icon(r.icon, 19) + '<span>' + r.label + '</span>' + (r.id === 'crew' ? crewDot() : r.id === 'law' ? lawDot() : r.id === 'edition' ? edDot() : '') + '</button>').join('') +
+      ROUTES.filter((r) => !r.hidden && (!r.gate || (cloud.on && (r.gate !== 'underground' || ugRankOk())))).map((r) => '<button data-act="nav" data-route="' + r.id + '"' + (ui.route === r.id ? ' aria-current="page"' : '') + '>' + icon(r.icon, 19) + '<span>' + (r.id === 'inventory' && !isPhone() ? 'Inventory &amp; Shop' : r.label) + '</span>' + (r.id === 'crew' ? crewDot() : r.id === 'law' ? lawDot() : r.id === 'edition' ? edDot() : '') + '</button>').join('') +
       '</nav>' +
       '<div class="side-user"><div class="frame" style="padding:2px;border-width:1px">' + portrait(p.portrait, 44) + '</div><div class="who"><b>' + esc(p.name) + '</b><span>' + esc(rank) + '</span></div>' +
       '<button class="icon-btn" data-act="nav" data-route="settings" aria-label="Settings"' + (ui.route === 'settings' ? ' aria-current="page"' : '') + '>' + icon('sliders', 18) + '</button></div>';
@@ -2775,6 +2808,7 @@ const ART = (function () {
         '<div class="tb-pill">' + icon('heart', 18) + '<b class="num">' + p.health + ' / ' + MOB.effective(S).maxHealth + '</b></div>' +
         '<button class="tb-pill" data-act="open-supplies" title="Quick supplies: buy and use health, energy and heat items">' + icon('bolt', 18) + '<b class="num">' + p.energy + ' / ' + MOB.effective(S).maxEnergy + '</b><span aria-hidden="true" class="plus">+</span></button>' +
         '<button class="tb-pill env" data-act="open-daily" title="Daily envelope" aria-label="Daily envelope' + (dailyReady() ? ', ready to collect' : '') + '">' + icon('mail', 18) + (dailyReady() ? '<i class="env-dot" aria-hidden="true"></i>' : '') + '</button>' +
+        (cloud.on ? '<button class="tb-pill env" data-act="open-paper" title="The Paper: today\'s edition and your streak" aria-label="The Paper' + (typeof edUi !== 'undefined' && edUi.fresh ? ', new edition out' : '') + '">' + icon('book', 18) + (typeof edUi !== 'undefined' && edUi.fresh ? '<i class="env-dot" aria-hidden="true"></i>' : '') + '</button>' : '') +
         (typeof whUi !== 'undefined' && whUi.data && cloud.on ? '<div class="tb-pill tok" title="MOB tokens">' + icon('star', 18) + '<b class="num">' + whUi.data.tokens + '</b></div>' : '') + '</div>' +
       '<div class="district-chip" title="Current district">' + icon('pin', 16) + '<span>' + esc(d.name) + '</span></div>' +
       '<div class="spacer"></div>' +
@@ -3003,6 +3037,7 @@ const ART = (function () {
   const CATS = ['All', 'Weapons', 'Clothing', 'Everyday'];
   function pageInventory() {
     if (isPhone()) return phoneInventory();
+    if (true) return gearScreen();
     const eff = MOB.effective(S), used = MOB.slotsUsed(S.inventory), cap = MOB.CONFIG.inventorySlots;
     const items = MOB.ITEMS.filter((i) => (ui.invFilter === 'All' || i.category === ui.invFilter) && (!ui.invOwned || S.inventory[i.id]));
     const bonusSummary = MOB.ATTRS.map((k) => eff.bonus[k] ? '<span class="bonus">+' + eff.bonus[k] + ' ' + MOB.ATTR_LABEL[k] + '</span>' : '').join('') + (eff.bonus.health ? '<span class="bonus">+' + eff.bonus.health + ' Health</span>' : '');
@@ -3018,6 +3053,7 @@ const ART = (function () {
   }
 
   function pageShop() {
+    if (!isPhone()) return gearScreen();
     const items = MOB.ITEMS.filter((i) => i.shop && (ui.shopFilter === 'All' || i.category === ui.shopFilter)).sort((a, b) => a.priceMinor - b.priceMinor);
     const ri = MOB.playerRankIdx(S);
     return '<section class="shop-front">' + ART.shopSign() + '<div class="sign"><h2>Sal\'s Back Room</h2><p>Cash only · No names · No returns</p></div></section>' +
@@ -3396,7 +3432,7 @@ const ART = (function () {
     syncModalHistory();
     const root = $('#modal-root');
     if (!ui.modal) { root.innerHTML = ''; lastModalKey = null; return; }
-    const html = ui.modal.type === 'mission' ? missionModal() : ui.modal.type === 'item' ? itemModal() : ui.modal.type === 'profile' ? profileModal() : ui.modal.type === 'player' ? playerModal() : ui.modal.type === 'police' ? policeModal() : ui.modal.type === 'supplies' ? suppliesModal() : ui.modal.type === 'daily' ? dailyModal() : ui.modal.type === 'guides' ? guidesModal() : ui.modal.type === 'me' ? meModal() : ui.modal.type === 'titlerec' ? titleRecModal() : ui.modal.type === 'fight' ? fightModal() : resetModal();
+    const html = ui.modal.type === 'mission' ? missionModal() : ui.modal.type === 'item' ? itemModal() : ui.modal.type === 'profile' ? profileModal() : ui.modal.type === 'player' ? playerModal() : ui.modal.type === 'police' ? policeModal() : ui.modal.type === 'supplies' ? suppliesModal() : ui.modal.type === 'paper' ? paperModal() : ui.modal.type === 'daily' ? dailyModal() : ui.modal.type === 'guides' ? guidesModal() : ui.modal.type === 'me' ? meModal() : ui.modal.type === 'titlerec' ? titleRecModal() : ui.modal.type === 'fight' ? fightModal() : resetModal();
     const key = modalKey();
     const pane = !isPhone() && ui.route === 'jobs' && ui.modal.type === 'mission' ? $('#job-pane') : null;   /* desktop: the mission opens in the preview pane, not a pop-up */
     if (pane) {
@@ -3511,9 +3547,11 @@ const ART = (function () {
       case 'pop-bell': ui.pop = ui.pop === 'bell' ? null : 'bell'; if (ui.pop) ui.bellSeen = Date.now(); renderTopbar(); if (ui.pop === 'bell') ui.bellSeen = Date.now(); break;
       case 'pop-menu': ui.pop = ui.pop === 'menu' ? null : 'menu'; renderTopbar(); break;
       case 'job-filter': ui.jobFilter = t.dataset.f; render(); break;
-      case 'inv-filter': ui.invFilter = t.dataset.f; render(); break;
+      case 'inv-filter': ui.invFilter = t.dataset.f; ui.gearPg.inv = 0; render(); break;
+      case 'shop-sel': ui.shopSel = id; render(); break;
+      case 'gear-page': ui.gearPg[t.dataset.w] = Math.max(0, ui.gearPg[t.dataset.w] + Number(t.dataset.d)); render(); break;
       case 'inv-owned': ui.invOwned = !ui.invOwned; render(); break;
-      case 'shop-filter': ui.shopFilter = t.dataset.f; render(); break;
+      case 'shop-filter': ui.shopFilter = t.dataset.f; ui.gearPg.shop = 0; ui.shopSel = null; render(); break;
       case 'sort': ui.sort = t.dataset.k; render(); break;
       case 'job-chapter': ui.jobCh = isNaN(Number(t.dataset.ch)) ? t.dataset.ch : Number(t.dataset.ch); ui.modal = ui.resolving ? ui.modal : null; render(); break;
       case 'home-mission': { const mm = MOB.MISSION_BY_ID[id]; go('jobs'); if (mm) { ui.jobCh = mm.chapter || 'street'; ui.modal = { type: 'mission', id, phase: '', claimed: null }; render(); } break; }
@@ -3525,6 +3563,7 @@ const ART = (function () {
         if (!res.ok) { toast(res.error, 'error'); break; }
         ui.modal = { type: 'fight', result: null }; commit(res.state); toast(res.message, 'success'); break;
       }
+      case 'open-paper': openPaper(); break;
       case 'open-daily': ui.pop = null; ui.modal = { type: 'daily' }; render(); break;
       case 'open-guides': ui.pop = null; ui.modal = { type: 'guides' }; render(); break;
       case 'open-me': ui.pop = null; ui.modal = { type: 'me' }; render(); break;
@@ -4573,11 +4612,12 @@ const ART = (function () {
     catch (e) {
       if (e.signedOut) { showAuth(friendly(e)); return; }
       edUi.err = (e.status === 404 || /could not find|function/i.test(e.message || '')) ? 'The paper needs the latest database update (migration 0024). Ask whoever runs the game to install it.' : friendly(e);
-    } finally { if (ui.route === 'edition') render(); }
+    } finally { if (ui.route === 'edition' || (ui.modal && ui.modal.type === 'paper')) render(); }
   }
   async function edDotPoll() {
     if (!cloud.on || document.hidden || cloud.busy || ui.route === 'edition') return;
-    try { const r = await rpc('game_edition_dot'); const f = !!(r && r.ok && r.fresh); if (f !== edUi.fresh) { edUi.fresh = f; render(); } } catch (e) { /* the next poll will catch up */ }
+    try { const r = await rpc('game_edition_dot'); const f = !!(r && r.ok && r.fresh); if (f !== edUi.fresh) { edUi.fresh = f; render(); }
+      if (f && !ui.paperAuto && (!navigator.webdriver || window.FORCE_PAPER) && !isPhone() && !ui.modal && !ui.resolving && cloud.session) { ui.paperAuto = true; openPaper(); } } catch (e) { /* the next poll will catch up */ }
   }
   setInterval(edDotPoll, 120000); setTimeout(edDotPoll, 4000);
   function edDot() { return edUi.fresh ? '<span class="badge-dot" role="status" aria-label="A new edition of the paper is out">!</span>' : ''; }
@@ -4646,6 +4686,18 @@ const ART = (function () {
       (you.got_offer ? '' : '<div style="font-size:13.5px;color:var(--muted)">You missed yesterday\'s offer. Today\'s is above, and it closes in ' + edLeft(d.ends_at) + '.</div>') + '</section>';
     return masthead + (edUi.streak ? streakView(edUi.streak) : '') + today + yday + todayNews + rec;
   }
+  function openPaper() {
+    ui.pop = null; ui.modal = { type: 'paper' };
+    if (cloud.on && !edUi.loading && (!edUi.data || Date.now() - edUi.at > 8000)) setTimeout(() => loadEdition(true), 0);
+    render();
+  }
+  function paperModal() {
+    let body;
+    if (edUi.err) body = '<p>' + esc(edUi.err) + '</p><button class="btn sm" data-act="ed-reload">Try again</button>';
+    else if (!edUi.data) body = '<p style="color:var(--muted)">The presses are rolling…</p>';
+    else body = '<div class="grid g2" style="align-items:start">' + editionView(edUi.data) + '</div>';
+    return homeModal('Event', 'The Paper', body, 'wide');
+  }
   function pageEdition() {
     if (edUi.loadedFor !== (cloud.session && cloud.session.email) && !edUi.loading) { edUi.loading = true; setTimeout(() => { edUi.loading = false; loadEdition(true); }, 0); }
     else if (Date.now() - edUi.at > 8000 && !cloud.busy) setTimeout(() => loadEdition(true), 0);
@@ -4709,8 +4761,8 @@ const ART = (function () {
   }
 
   /* ---------- header pop-ups: Daily envelope, Guides (playtest notes), player card ---------- */
-  function homeModal(eyebrow, title, body) {
-    return '<div class="modal-back" data-act="backdrop"><div class="modal narrow" role="dialog" aria-modal="true" aria-labelledby="im-title" tabindex="-1"><div class="modal-head"><div><div class="eyebrow">' + eyebrow +
+  function homeModal(eyebrow, title, body, cls) {
+    return '<div class="modal-back" data-act="backdrop"><div class="modal ' + (cls || 'narrow') + '" role="dialog" aria-modal="true" aria-labelledby="im-title" tabindex="-1"><div class="modal-head"><div><div class="eyebrow">' + eyebrow +
       '</div><h2 id="im-title">' + title + '</h2></div><button class="icon-btn" data-act="close-modal" aria-label="Close">' + icon('x', 18) + '</button></div><div class="modal-body">' + body + '</div></div></div>';
   }
   const dailyModal = () => homeModal('Event', 'Daily envelope', dailyCard().replace('margin-top:20px', 'margin-top:0'));
@@ -4771,6 +4823,49 @@ const ART = (function () {
       combatBanner() +
       '<div class="jobs-split"><div class="jobs-left">' + list + '</div><aside id="job-pane" class="job-pane" aria-label="Mission preview"><div class="job-pane-hint">' + icon('brief', 34) + '<h3>Pick a job</h3><p>Select View on a job to read the briefing and choose how to play it.</p></div></aside></div>';
   }
+  /* ---------- desktop "Inventory & Shop": your gear on the left, the dealer's stock and a detail pane on the right ---------- */
+  ui.gearPg = ui.gearPg || { inv: 0, shop: 0 };
+  function gearRows() { const h = window.innerHeight; return h >= 900 ? 3 : 2; }
+  function gearPager(which, total, per) {
+    const pages = Math.max(1, Math.ceil(total / per)), pg = Math.min(ui.gearPg[which], pages - 1); ui.gearPg[which] = pg;
+    return pages > 1 ? '<div class="gear-pager"><button class="btn sm ghost" data-act="gear-page" data-w="' + which + '" data-d="-1"' + (pg === 0 ? ' disabled' : '') + '>' + icon('chev', 14) + 'Prev</button><span>' + (pg + 1) + ' / ' + pages + '</span><button class="btn sm ghost" data-act="gear-page" data-w="' + which + '" data-d="1"' + (pg >= pages - 1 ? ' disabled' : '') + '>Next</button></div>' : '';
+  }
+  function gearTabs(act, cur) { return '<div class="gear-tabs" role="group">' + CATS.map((c) => '<button class="filter" data-act="' + act + '" data-f="' + c + '" aria-pressed="' + (cur === c) + '">' + c + '</button>').join('') + '</div>'; }
+  function gearInvPanel() {
+    const rows = gearRows(), per = rows * 4, used = MOB.slotsUsed(S.inventory), cap = MOB.CONFIG.inventorySlots, eff = MOB.effective(S);
+    const all = MOB.ITEMS.filter((i) => S.inventory[i.id] && (ui.invFilter === 'All' || i.category === ui.invFilter));
+    const pg = Math.min(ui.gearPg.inv, Math.max(0, Math.ceil(all.length / per) - 1)), items = all.slice(pg * per, pg * per + per);
+    const bon = MOB.ATTRS.map((k) => eff.bonus[k] ? '+' + eff.bonus[k] + ' ' + MOB.ATTR_LABEL[k] : '').filter(Boolean).concat(eff.bonus.health ? ['+' + eff.bonus.health + ' Health'] : []).join(' · ');
+    const cards = items.map((it) => {
+      const qty = S.inventory[it.id], eq = it.slot && S.equipped[it.slot] === it.id;
+      return '<button class="gear-item' + (eq ? ' equipped' : '') + '" data-act="open-item" data-id="' + it.id + '" aria-label="' + esc(it.name) + ' details"><div class="art ' + (ART.itemHasPhoto(it.art) ? 'has-photo' : 'temp-art') + '">' + ART.itemArt(it.art, 72) + '</div><b>' + esc(it.name) + '</b><small>' + (eq ? 'Equipped' : qty > 1 ? '×' + qty : it.slot ? MOB.SLOT_LABEL[it.slot] : 'Owned') + '</small></button>';
+    }).join('');
+    return '<section class="gear-panel gear-inv"><header><div><h2>Inventory</h2><p>Your current gear and supplies.</p></div></header>' + gearTabs('inv-filter', ui.invFilter) +
+      '<div class="gear-grid4">' + (cards || '<div class="empty" style="grid-column:1/-1">' + icon('pack', 28) + '<h3>Nothing here yet</h3><p>Buy something from the dealer on the right.</p></div>') + '</div>' +
+      '<footer>' + icon('pack', 16) + '<span>Capacity: <b class="num">' + used + ' / ' + cap + '</b></span>' + (bon ? '<small class="gear-bon">' + esc(bon) + '</small>' : '') + gearPager('inv', all.length, per) + '</footer></section>';
+  }
+  function gearShopPanel() {
+    const rows = window.innerHeight >= 1040 ? 3 : 2, per = rows * 3, ri = MOB.playerRankIdx(S);
+    const all = MOB.ITEMS.filter((i) => i.shop && (ui.shopFilter === 'All' || i.category === ui.shopFilter)).sort((a, b) => a.priceMinor - b.priceMinor);
+    const pg = Math.min(ui.gearPg.shop, Math.max(0, Math.ceil(all.length / per) - 1)), items = all.slice(pg * per, pg * per + per);
+    let sel = all.find((i) => i.id === ui.shopSel) || items[0];
+    const card = (it) => {
+      const qty = S.inventory[it.id] || 0, locked = ri < MOB.RANK_IDX[it.rankReq], maxed = it.stackable ? qty >= MOB.CONFIG.maxStack : qty >= 1;
+      return '<article class="gear-item shopcard' + (sel && sel.id === it.id ? ' sel' : '') + '" id="shop-' + it.id + '"><button class="gi-main" data-act="shop-sel" data-id="' + it.id + '" aria-label="' + esc(it.name) + ', details"><div class="art ' + (ART.itemHasPhoto(it.art) ? 'has-photo' : 'temp-art') + '">' + ART.itemArt(it.art, 72) + '</div><b>' + esc(it.name) + '</b><span class="price">' + money(it.priceMinor) + '</span></button>' +
+        (maxed ? '<button class="btn sm ghost" disabled>' + icon('check', 14) + 'Owned</button>' : '<button class="btn sm" data-act="buy" data-id="' + it.id + '">' + (locked ? icon('lock', 13) : '') + 'Buy</button>') + '</article>';
+    };
+    let detail = '';
+    if (sel) {
+      const qty = S.inventory[sel.id] || 0, locked = ri < MOB.RANK_IDX[sel.rankReq], maxed = sel.stackable ? qty >= MOB.CONFIG.maxStack : qty >= 1;
+      detail = '<aside class="gear-detail"><div class="art ' + (ART.itemHasPhoto(sel.art) ? 'has-photo' : 'temp-art') + '">' + ART.itemArt(sel.art, 120) + '</div><h3>' + esc(sel.name) + '</h3>' +
+        '<div class="rar-' + sel.rarity + '" style="font-size:12px;letter-spacing:.1em;text-transform:uppercase">' + sel.rarity + ' · ' + (sel.slot ? MOB.SLOT_LABEL[sel.slot] : sel.kind === 'consumable' ? 'Consumable' : 'Everyday item') + (sel.stackable && qty ? ' · You have ' + qty : '') + '</div>' +
+        '<p>' + esc(sel.description) + '</p>' + bonusChips(sel) + (locked ? '<p class="gear-lock">' + icon('lock', 14) + ' Needs the rank of ' + esc(MOB.rankName(sel.rankReq)) + '</p>' : '') +
+        '<div class="gd-buy"><span class="price">' + money(sel.priceMinor) + '</span>' + (maxed ? '<button class="btn" disabled>' + icon('check', 14) + 'Owned</button>' : '<button class="btn" data-act="buy" data-id="' + sel.id + '">Purchase</button>') + '</div></aside>';
+    }
+    return '<section class="gear-panel gear-shop"><header><div><h2>Equipment shop</h2><p>Sal\'s Back Room · cash only, no returns.</p></div><div class="gear-cash">' + icon('dollar', 16) + '<b class="num">' + money(S.player.cashMinor) + '</b></div></header>' + gearTabs('shop-filter', ui.shopFilter) +
+      '<div class="gear-shop-body"><div><div class="gear-grid3">' + items.map(card).join('') + '</div>' + gearPager('shop', all.length, per) + '</div>' + detail + '</div></section>';
+  }
+  function gearScreen() { return '<h1 class="sr">Inventory and Equipment Shop</h1><div class="gear-wrap">' + gearInvPanel() + gearShopPanel() + '</div>'; }
 
   /* ---------- Quick Supplies: buy and use consumables from any page (tap the energy chip) ---------- */
   function suppliesModal() {
