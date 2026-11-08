@@ -818,6 +818,27 @@ main:focus, main:focus-visible { outline: none; }
 }
 @media (min-width: 901px) and (max-height: 780px) { .law-wrap { height: calc(100dvh - 92px - 52px); } }
 
+
+@media (min-width: 901px) {
+  main:has(.desk-page) { max-width: none; padding-bottom: 26px; }
+  .desk-page { height: calc(100dvh - 116px - 52px); align-content: start; overflow: auto; }
+  .desk-pill { border: 1px solid var(--gold-dim); border-radius: 20px; padding: 8px 16px; background: rgba(8,7,7,.55); white-space: nowrap; }
+  .biz-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+  .biz-row .card { display: flex; flex-direction: column; }
+  .biz-row .biz-art { height: clamp(120px, 22vh, 220px); }
+  .biz-row .m-body { flex: 1; display: flex; flex-direction: column; } .biz-row .m-foot { margin-top: auto; flex-wrap: wrap; gap: 8px; }
+  .titles-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; align-content: start; }
+  .titles-grid article { height: 100%; }
+  .desk-biz { grid-template-rows: auto 1fr auto; } .desk-biz .biz-row { min-height: 0; } .desk-biz .biz-art { height: clamp(120px, 28vh, 300px); }
+  .prof-id .frame { width: min(200px, 20vh); } .prof-id .frame img, .prof-id .frame svg { width: 100%; height: auto; }
+  .prof-wrap .law-left { grid-template-rows: none; align-content: start; }
+  .prof-id { display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; } .prof-id .pc-meta { justify-content: center; }
+  .prof-kv { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .prof-body { min-height: 0; overflow: auto; }
+  .gear-panel > footer { justify-content: flex-end; }
+}
+@media (min-width: 901px) and (max-width: 1300px) { .biz-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } .titles-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 901px) and (max-height: 780px) { .desk-page { height: calc(100dvh - 92px - 52px); } }
 </style>
 <div class="app" id="app">
   <aside class="sidebar" id="sidebar" aria-label="Main navigation"></aside>
@@ -3104,6 +3125,7 @@ const ART = (function () {
 
   function pageProfile() {
     if (isPhone()) return phoneProfile();
+    if (true) return profileDesktop();
     const p = S.player, pr = MOB.rankProgress(p.xp);
     const rate = S.stats.attempts ? Math.round((S.stats.successes / S.stats.attempts) * 100) : null;
     const d = MOB.DISTRICT_BY_ID[p.district];
@@ -3147,6 +3169,7 @@ const ART = (function () {
   }
 
   function pageBusinesses() {
+    if (!isPhone() && !ui.classicBiz) return bizDesktop();
     const owned = MOB.BUSINESSES.filter((b) => S.businesses[b.id]);
     const net = owned.reduce((n, b) => n + Math.round((b.grossMinorPerDay - b.expenseMinorPerDay) * MOB.levelMult(S.businesses[b.id].level)), 0);
     return head('Chicago, 1931', 'Businesses', 'Buy a stake in the neighborhood. Income builds up on its own clock, up to 24 hours at a time. Collect it before it stops, and the expenses come out with it.',
@@ -3567,6 +3590,7 @@ const ART = (function () {
       case 'job-filter': ui.jobFilter = t.dataset.f; render(); break;
       case 'inv-filter': ui.invFilter = t.dataset.f; ui.gearPg.inv = 0; render(); break;
       case 'shop-sel': ui.shopSel = id; render(); break;
+      case 'desk-tab': ui[t.dataset.k] = t.dataset.v; ui.gearPg.titles = 0; ui.gearPg.ach = 0; render(); break;
       case 'gear-page': ui.gearPg[t.dataset.w] = Math.max(0, ui.gearPg[t.dataset.w] + Number(t.dataset.d)); render(); break;
       case 'inv-owned': ui.invOwned = !ui.invOwned; render(); break;
       case 'shop-filter': ui.shopFilter = t.dataset.f; ui.gearPg.shop = 0; ui.shopSel = null; render(); break;
@@ -4331,6 +4355,7 @@ const ART = (function () {
       const list = sub === 'held' ? held : sub === 'ready' ? avail : rest;
       return h + subTabs('titles', tabs) + (list.length ? list.map(titleCard).join('') : '<p style="color:var(--muted)">Nothing here yet.</p>');
     }
+    if (!isPhone()) return titlesDesktop(avail, held, rest);
     return h + sec('Ready to claim', avail) + sec('Held', held) + sec('Still to earn', rest);
   }
   function titleRecModal() {
@@ -4885,6 +4910,54 @@ const ART = (function () {
       '<div class="gear-shop-body"><div><div class="gear-grid3">' + items.map(card).join('') + '</div>' + gearPager('shop', all.length, per) + '</div>' + detail + '</div></section>';
   }
   function gearScreen() { return '<h1 class="sr">Inventory and Equipment Shop</h1><div class="gear-wrap">' + gearInvPanel() + gearShopPanel() + '</div>'; }
+  /* ---------- desktop one-screen pages: Businesses, Titles, Profile (phone untouched) ---------- */
+  ui.gearPg.titles = ui.gearPg.titles || 0; ui.gearPg.ach = ui.gearPg.ach || 0;
+  const deskFree = (extra) => window.innerHeight - (window.innerHeight <= 860 ? 92 : 116) - 52 - extra;
+  function deskTabs(key, cur, tabs) {
+    return '<div class="gear-tabs" role="group">' + tabs.map((t) => '<button class="filter" data-act="desk-tab" data-k="' + key + '" data-v="' + t[0] + '" aria-pressed="' + (cur === t[0]) + '">' + t[1] + '</button>').join('') + '</div>';
+  }
+  function bizDesktop() {
+    const owned = MOB.BUSINESSES.filter((b) => S.businesses[b.id]);
+    const net = owned.reduce((n, b) => n + Math.round((b.grossMinorPerDay - b.expenseMinorPerDay) * MOB.levelMult(S.businesses[b.id].level)), 0);
+    return '<h1 class="sr">Businesses</h1><section class="gear-panel desk-page desk-biz"><header><div><h2>Businesses</h2><p>Buy a stake in the neighborhood. Income builds up to 24 hours at a time. Collect it before it stops, and the expenses come out with it.</p></div>' +
+      '<div class="desk-pill"><b class="num">' + owned.length + ' / ' + MOB.BUSINESSES.length + '</b> owned · Net <b class="num">' + money(net) + '</b> / day</div></header>' +
+      '<div class="biz-row">' + MOB.BUSINESSES.map(businessCard).join('') + '</div>' +
+      '<footer>' + icon('info', 16) + '<small>Fictional game-balance numbers. In this prototype the income clock runs on your browser clock.</small></footer></section>';
+  }
+  function titlesDesktop(avail, held, rest) {
+    const cur = ui.titleTab || (avail.length ? 'ready' : 'held');
+    const list = cur === 'ready' ? avail : cur === 'held' ? held : rest;
+    const rows = Math.max(1, Math.min(3, Math.floor(deskFree(230) / 270))), per = rows * 4;
+    const pg = Math.min(ui.gearPg.titles, Math.max(0, Math.ceil(list.length / per) - 1)); ui.gearPg.titles = pg;
+    const items = list.slice(pg * per, pg * per + per);
+    return '<h1 class="sr">Titles</h1><section class="gear-panel desk-page"><header><div><h2>Titles</h2><p>Earned by what you do in the city. Cosmetic only: no title changes how you fight or earn.</p></div></header>' +
+      deskTabs('titleTab', cur, [['ready', 'Ready to claim ' + avail.length], ['held', 'Held ' + held.length], ['locked', 'Still to earn ' + rest.length]]) +
+      (items.length ? '<div class="titles-grid">' + items.map(titleCard).join('') + '</div>' : '<p style="color:var(--muted)">Nothing here yet.</p>') +
+      '<footer>' + gearPager('titles', list.length, per) + '</footer></section>';
+  }
+  function profileDesktop() {
+    const p = S.player, pr = MOB.rankProgress(p.xp);
+    const rate = S.stats.attempts ? Math.round((S.stats.successes / S.stats.attempts) * 100) : null;
+    const d = MOB.DISTRICT_BY_ID[p.district], flags = Object.keys(S.flags), ledger = S.ledger.slice(0, 10);
+    const earned = MOB.ACHIEVEMENTS.filter((a) => S.achievements[a.id]).length;
+    const tab = ui.profTab || 'gear';
+    const kv = (l, v, c) => '<div class="kv" style="grid-template-columns:1fr"><div><small>' + l + '</small><b class="num ' + (c || '') + '">' + v + '</b></div></div>';
+    let body;
+    if (tab === 'gear') body = slotsPanel();
+    else if (tab === 'story') body = flags.length ? '<div class="bonus-list">' + flags.map((f) => '<span class="bonus">' + esc(MOB.FLAGS[f]) + '</span>').join('') + '</div>' : '<p style="color:var(--muted)">Nothing yet. Finish jobs on the board and the story will start to remember you.</p>';
+    else if (tab === 'money') body = ledger.length ? '<div class="table-wrap"><table class="rank" style="min-width:0"><tbody>' + ledger.map((e) => '<tr><td style="width:120px;color:var(--muted)">' + ago(e.ts) + '</td><td>' + esc(e.ref) + '</td><td style="text-align:right;color:' + (e.amountMinor < 0 ? 'var(--bad)' : 'var(--gold)') + '">' + (e.amountMinor < 0 ? '−' : '+') + money(Math.abs(e.amountMinor)) + '</td></tr>').join('') + '</tbody></table></div>' : '<p style="color:var(--muted)">No money has changed hands yet.</p>';
+    else {
+      const per = Math.max(3, Math.floor(deskFree(300) / 84)) * 3, all = MOB.ACHIEVEMENTS;
+      const pg = Math.min(ui.gearPg.ach, Math.max(0, Math.ceil(all.length / per) - 1)); ui.gearPg.ach = pg;
+      body = '<div class="grid g3">' + all.slice(pg * per, pg * per + per).map((a) => { const on = S.achievements[a.id]; return '<div class="ach ' + (on ? '' : 'off') + '"><div class="ai">' + icon(on ? 'award' : 'lock', 20) + '</div><div><b>' + esc(a.title) + '</b><span>' + esc(a.desc) + '</span></div></div>'; }).join('') + '</div>' + gearPager('ach', all.length, per);
+    }
+    return '<h1 class="sr">Profile</h1><div class="law-wrap prof-wrap"><section class="gear-panel law-left"><header><div><h2>Dossier</h2><p>Your file in the city.</p></div><button class="btn ghost sm" data-act="edit-profile">Edit Profile</button></header>' +
+      '<div class="prof-id"><div class="frame">' + portrait(p.portrait, 170) + '</div><div style="min-width:0"><h3 class="pc-name" style="font-size:28px">' + esc(p.name) + '</h3>' + myTitle() +
+      '<div class="pc-meta"><span class="chip demo">Demo character</span><span class="chip gold">' + esc(pr.cur.name) + '</span><span class="chip">' + MOB.healthState(p.health) + '</span><span class="chip">' + MOB.heatBand(p.heat) + ' heat</span></div></div></div>' +
+      '<div class="prof-kv">' + kv('Experience', MOB.fmtNum(p.xp) + (pr.next ? ' / ' + MOB.fmtNum(pr.next.xp) : '')) + kv('Respect', MOB.fmtNum(p.respect)) + kv('Jobs resolved', S.stats.attempts) + kv('Success rate', rate == null ? 'No jobs yet' : rate + '%') + kv('District', esc(d.name)) + kv('Net worth', money(MOB.netWorthMinor(S)), 'gold') + '</div></section>' +
+      '<section class="gear-panel law-right" style="grid-template-rows:auto auto 1fr"><header><div><h2>Records</h2><p>Gear, story, money and achievements (' + earned + ' of ' + MOB.ACHIEVEMENTS.length + ').</p></div></header>' +
+      deskTabs('profTab', tab, [['gear', 'Equipped'], ['story', 'Story ' + flags.length], ['money', 'Money'], ['ach', 'Achievements']]) + '<div class="prof-body">' + body + '</div></section></div>';
+  }
 
   /* ---------- Quick Supplies: buy and use consumables from any page (tap the energy chip) ---------- */
   function suppliesModal() {
