@@ -839,6 +839,15 @@ main:focus, main:focus-visible { outline: none; }
 }
 @media (min-width: 901px) and (max-width: 1300px) { .biz-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } .titles-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 901px) and (max-height: 780px) { .desk-page { height: calc(100dvh - 92px - 52px); } }
+
+@media (min-width: 901px) {
+  .desk-terr .terr-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  .crew-two { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; align-items: start; } .crew-col { display: grid; gap: 10px; align-content: start; }
+  .crew-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .crew-body { display: grid; gap: 12px; align-content: start; } .crew-body.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .desk-page .subtabs { justify-content: flex-start; }
+}
+@media (min-width: 901px) and (max-width: 1500px) { .desk-terr .terr-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 </style>
 <div class="app" id="app">
   <aside class="sidebar" id="sidebar" aria-label="Main navigation"></aside>
@@ -4131,9 +4140,10 @@ const ART = (function () {
     const inv = (d.invitations || []).map((r) => crewCard('<b>' + esc(r.crew_name) + '</b><span style="color:var(--muted)">Invited by ' + esc(r.from) + '</span><div style="display:flex;gap:8px"><button class="btn sm" data-act="crew-respond" data-id="' + r.id + '" data-yes="1">Accept</button><button class="btn sm ghost" data-act="crew-respond" data-id="' + r.id + '" data-yes="0">Decline</button></div>')).join('');
     const apps = new Set((d.applications || []).map((a) => a.crew_id));
     const mine = (d.applications || []).map((r) => crewCard('<b>' + esc(r.crew_name) + '</b><span style="color:var(--muted)">Your application is waiting.</span><div><button class="btn sm ghost" data-act="crew-cancel" data-id="' + r.id + '">Withdraw</button></div>')).join('');
-    const list = (crewUi.browse || []).map((c) => crewCard('<div style="display:flex;justify-content:space-between;gap:8px"><b>' + esc(c.name) + '</b><span class="chip">' + c.members + ' / ' + c.capacity + '</span></div>' +
+    const listA = (crewUi.browse || []).map((c) => crewCard('<div style="display:flex;justify-content:space-between;gap:8px"><b>' + esc(c.name) + '</b><span class="chip">' + c.members + ' / ' + c.capacity + '</span></div>' +
       (c.description ? '<p style="color:var(--muted);font-size:13.5px">' + esc(c.description) + '</p>' : '') + '<span style="color:var(--muted);font-size:13px">Led by ' + esc(c.leader) + '</span>' +
-      '<div>' + (apps.has(c.id) ? '<button class="btn sm ghost" disabled>Applied</button>' : c.full ? '<button class="btn sm ghost" disabled>Full</button>' : '<button class="btn sm" data-act="crew-apply" data-id="' + c.id + '">Apply</button>') + '</div>')).join('');
+      '<div>' + (apps.has(c.id) ? '<button class="btn sm ghost" disabled>Applied</button>' : c.full ? '<button class="btn sm ghost" disabled>Full</button>' : '<button class="btn sm" data-act="crew-apply" data-id="' + c.id + '">Apply</button>') + '</div>'));
+    const list = listA.join('');
     const sub = curSub('crew', inv ? 'invites' : 'browse');
     const tabs = isPhone() ? subTabs('crew', [['browse', 'Crews'], ['invites', 'Invites' + ((d.invitations || []).length ? ' ' + d.invitations.length : '')], ['found', 'Found']]) : '';
     const form = crewCard('<h3 style="font-size:20px">Found a crew</h3><p style="color:var(--muted);font-size:13.5px">Costs ' + money(Number(cfg.fee_minor)) + '. Needs the rank of ' + esc(cfg.min_rank_name) + ' (you are ' + esc(myRank) + '). Up to ' + cfg.capacity + ' members. The name cannot be changed later.</p>' +
@@ -4141,6 +4151,7 @@ const ART = (function () {
       '<textarea id="crew-desc" class="inp" maxlength="300" rows="2" placeholder="What is the crew about? (optional)"></textarea>' +
       '<div><button class="btn" data-act="crew-create">Found the crew</button></div>');
     const invs = inv + mine || '<p style="color:var(--muted)">No invitations or applications right now.</p>';
+    if (!isPhone()) return crewNoneDesktop(listA, inv, mine, form);
     if (isPhone()) return tabs + (sub === 'invites' ? invs : sub === 'found' ? form : (list || '<div class="empty"><h3>No crews yet</h3><p>Be the first to found one.</p></div>'));
     return (inv || mine ? '<h2 class="sec-title">Your invitations and applications</h2><div class="grid g3">' + inv + mine + '</div>' : '') + '<h2 class="sec-title">Crews you can join</h2>' +
       (list ? '<div class="grid g3">' + list + '</div>' : '<p style="color:var(--muted)">No crews yet. Be the first to found one.</p>') + '<h2 class="sec-title">Start your own</h2><div class="grid g2">' + form + '</div>';
@@ -4194,6 +4205,7 @@ const ART = (function () {
     const sub = curSub('crew', 'members');
     const sections = { contracts, members: mem, requests: (me.can_recruit ? invite + (reqs || '<p style="color:var(--muted)">No requests waiting.</p>') : '<p style="color:var(--muted)">Only recruiters and officers see requests.</p>'), treasury, feed, about };
     if (isPhone()) return subTabs('crew', tabs) + sections[sub];
+    if (!isPhone()) return crewInDesktop(c, tabs, sections, sub);
     const T = { members: 'Members', requests: 'Requests', contracts: 'Contracts', treasury: 'Treasury', feed: 'Feed', about: 'About the crew' };
     return ['members', 'requests', 'contracts', 'treasury', 'feed', 'about'].map((k) => '<h2 class="sec-title">' + T[k] + '</h2>' + (k === 'members' ? '<div class="grid g3">' + sections[k] + '</div>' : k === 'requests' || k === 'contracts' ? '<div class="grid g3">' + sections[k] + '</div>' : sections[k])).join('');
   }
@@ -4207,7 +4219,7 @@ const ART = (function () {
     const h = head('The Outfit', crewUi.data && crewUi.data.crew ? crewUi.data.crew.name : 'Crew', 'A crew is a few players working together with a shared purse.');
     if (crewUi.err) return h + '<section class="card" style="padding:18px"><p>' + esc(crewUi.err) + '</p><button class="btn sm" data-act="crew-reload">Try again</button></section>';
     if (!crewUi.data) return h + '<p style="color:var(--muted)">Loading your crew…</p>';
-    return h + (crewUi.data.crew ? crewIn(crewUi.data) : crewNone(crewUi.data));
+    return (isPhone() ? h : '<h1 class="sr">Crew</h1>') + (crewUi.data.crew ? crewIn(crewUi.data) : crewNone(crewUi.data));
   }
   document.addEventListener('click', async (e) => {
     const t = e.target.closest('[data-act^="crew-"]'); if (!t) return;
@@ -4249,6 +4261,7 @@ const ART = (function () {
     const th = (k, label) => '<th class="' + (ui.sort === k ? 'sorted' : '') + '">' + label + '</th>';
     const rows = rankUi.data && rankUi.sort === ui.sort ? rankUi.data.rows : (rankUi.data ? rankUi.data.rows : null);
     const sub = rankUi.data ? 'Real players, live from the server. ' + rankUi.data.total + ' on the books. Tap a name to see their profile.' : 'Loading the ledger…';
+    if (!isPhone()) return rankDesktop(rows, sub);
     return head('The Outfit\'s ledger', 'Rankings', sub) +
       '<div class="filters" role="tablist" aria-label="Sort rankings">' + tabs.map((t) => '<button class="filter" role="tab" data-act="sort" data-k="' + t[0] + '" aria-selected="' + (ui.sort === t[0]) + '">Sort by ' + t[1] + '</button>').join('') + '</div>' +
       (rows ? '<div class="table-wrap"><table class="rank"><thead><tr><th>#</th><th>Player</th><th>Rank</th>' + th('xp', 'XP') + th('respect', 'Respect') + th('networth', 'Net worth') + '</tr></thead><tbody>' +
@@ -4473,7 +4486,7 @@ const ART = (function () {
       const sub = curSub('territory', 'map');
       return h + subTabs('territory', [['map', 'Districts'], ['rules', 'Rules'], ['hist', 'History']]) + (sub === 'rules' ? rules : sub === 'hist' ? (hist || '<p style="color:var(--muted)">No wars yet.</p>') : mine + d.districts.map((x) => districtCard(x, cfg)).join(''));
     }
-    return h + mine + '<div class="grid g3">' + d.districts.map((x) => districtCard(x, cfg)).join('') + '</div>' + rules + hist;
+    return terrDesktop(mine, d.districts.map((x) => districtCard(x, cfg)).join(''), rules, hist);
   }
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-act^="terr-"]'); if (!t || !cloud.on) return;
@@ -4957,6 +4970,39 @@ const ART = (function () {
       '<div class="prof-kv">' + kv('Experience', MOB.fmtNum(p.xp) + (pr.next ? ' / ' + MOB.fmtNum(pr.next.xp) : '')) + kv('Respect', MOB.fmtNum(p.respect)) + kv('Jobs resolved', S.stats.attempts) + kv('Success rate', rate == null ? 'No jobs yet' : rate + '%') + kv('District', esc(d.name)) + kv('Net worth', money(MOB.netWorthMinor(S)), 'gold') + '</div></section>' +
       '<section class="gear-panel law-right" style="grid-template-rows:auto auto 1fr"><header><div><h2>Records</h2><p>Gear, story, money and achievements (' + earned + ' of ' + MOB.ACHIEVEMENTS.length + ').</p></div></header>' +
       deskTabs('profTab', tab, [['gear', 'Equipped'], ['story', 'Story ' + flags.length], ['money', 'Money'], ['ach', 'Achievements']]) + '<div class="prof-body">' + body + '</div></section></div>';
+  }
+
+  /* ---- Rankings, Territory, Crew (desktop one-screen) ---- */
+  ui.gearPg.rank = ui.gearPg.rank || 0; ui.gearPg.crews = ui.gearPg.crews || 0;
+  function rankDesktop(rows, sub) {
+    const tabs = [['xp', 'Experience'], ['respect', 'Respect'], ['networth', 'Net worth']];
+    const th = (k, label) => '<th class="' + (ui.sort === k ? 'sorted' : '') + '">' + label + '</th>';
+    const per = Math.max(4, Math.floor(deskFree(260) / 66)), all = rows || [];
+    const pg = Math.min(ui.gearPg.rank, Math.max(0, Math.ceil(all.length / per) - 1)); ui.gearPg.rank = pg;
+    const tr = (r) => '<tr data-act="open-player" data-id="' + esc(r.id) + '" style="cursor:pointer" class="' + (r.is_you ? 'you' : '') + '"><td class="pos">' + r.position + '</td><td><div class="pl">' + portrait(r.portrait, 42) + '<div><b>' + esc(r.name) + '</b>' + (r.title ? '<div style="font-size:12.5px">' + glowTitle(r.title) + '</div>' : '') + '<div>' + (r.is_you ? '<span class="chip gold">You</span> ' : '') + (r.crew ? '<span class="chip">' + esc(r.crew) + '</span>' : '') + '</div></div></div></td>' +
+      '<td>' + esc(r.rank) + '</td><td class="' + (ui.sort === 'xp' ? 'sorted' : '') + '">' + MOB.fmtNum(r.xp) + '</td><td class="' + (ui.sort === 'respect' ? 'sorted' : '') + '">' + MOB.fmtNum(r.respect) + '</td><td class="' + (ui.sort === 'networth' ? 'sorted' : '') + '">' + money(Number(r.networth_minor)) + '</td></tr>';
+    return '<h1 class="sr">Rankings</h1><section class="gear-panel desk-page"><header><div><h2>Rankings</h2><p>' + esc(sub) + '</p></div></header>' +
+      '<div class="gear-tabs" role="group">' + tabs.map((t) => '<button class="filter" data-act="sort" data-k="' + t[0] + '" aria-pressed="' + (ui.sort === t[0]) + '">Sort by ' + t[1] + '</button>').join('') + '</div>' +
+      (rows ? '<div class="table-wrap"><table class="rank"><thead><tr><th>#</th><th>Player</th><th>Rank</th>' + th('xp', 'XP') + th('respect', 'Respect') + th('networth', 'Net worth') + '</tr></thead><tbody>' + all.slice(pg * per, pg * per + per).map(tr).join('') + '</tbody></table></div>' : '') +
+      '<footer>' + gearPager('rank', all.length, per) + '</footer></section>';
+  }
+  function terrDesktop(mine, cards, rules, hist) {
+    return '<h1 class="sr">Territory</h1><section class="gear-panel desk-page desk-terr"><header><div><h2>Territory</h2><p>Five districts. One crew rules each. Take one by war, hold it with your jobs.</p></div></header>' +
+      '<div>' + mine + '</div><div class="terr-row">' + cards + '</div>' +
+      '<details class="law-how"><summary>How it works' + (hist ? ' and recent wars' : '') + '</summary><div class="law-how-body" style="grid-template-columns:1fr 1fr">' + rules + hist + '</div></details></section>';
+  }
+  function crewNoneDesktop(listA, inv, mine, form) {
+    const per = Math.max(2, Math.floor(deskFree(220) / 160)) * 2;
+    const pg = Math.min(ui.gearPg.crews, Math.max(0, Math.ceil(listA.length / per) - 1)); ui.gearPg.crews = pg;
+    return '<section class="gear-panel desk-page"><header><div><h2>Crew</h2><p>A crew is a few players working together with a shared purse.</p></div></header>' +
+      '<div class="crew-two"><div class="crew-col"><h3 class="law-h">Crews you can join</h3>' +
+      (listA.length ? '<div class="crew-grid2">' + listA.slice(pg * per, pg * per + per).join('') + '</div>' + gearPager('crews', listA.length, per) : '<p style="color:var(--muted)">No crews yet. Be the first to found one.</p>') + '</div>' +
+      '<div class="crew-col">' + (inv || mine ? '<h3 class="law-h">Your invitations and applications</h3>' + inv + mine : '') + '<h3 class="law-h">Start your own</h3>' + form + '</div></div></section>';
+  }
+  function crewInDesktop(c, tabs, sections, sub) {
+    const grid = sub === 'members' || sub === 'requests' || sub === 'contracts';
+    return '<h1 class="sr">' + esc(c.name) + '</h1><section class="gear-panel desk-page"><header><div><h2>' + esc(c.name) + '</h2><p>A crew is a few players working together with a shared purse.</p></div></header>' +
+      '<div class="gear-tabs" role="group">' + tabs.map((t) => '<button class="filter" data-act="subtab" data-page="crew" data-id="' + t[0] + '" aria-pressed="' + (sub === t[0]) + '">' + t[1] + '</button>').join('') + '</div><div class="crew-body' + (grid ? ' grid g3' : '') + '">' + sections[sub] + '</div></section>';
   }
 
   /* ---------- Quick Supplies: buy and use consumables from any page (tap the energy chip) ---------- */
